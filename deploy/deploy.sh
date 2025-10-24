@@ -1,48 +1,123 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
-# Variables
-APP_DIR=/var/www/chatverse
-REPO_DIR=/var/www/chatverse-repo
-BACKEND_DIR=$REPO_DIR/backend
-FRONTEND_DIR=$REPO_DIR/frontend
+echo "=== ChatVerse AI Auto-Deploy Script ==="
+echo ""
 
-# Ensure dependencies
+# Variables - CHANGE THESE IF NEEDED
+REPO_DIR=$(pwd)
+BACKEND_DIR="$REPO_DIR/backend"
+FRONTEND_DIR="$REPO_DIR/frontend"
+APP_DIR="/var/www/chatverse"
+NGINX_CONF_SOURCE="$REPO_DIR/deploy/nginx.conf"
+NGINX_CONF_DEST="/etc/nginx/sites-available/chatverse"
+
+# Step 1: Install Node.js if missing
+echo ">> Checking Node.js..."
 if ! command -v node >/dev/null 2>&1; then
+  echo "Installing Node.js 20..."
   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
   sudo apt-get install -y nodejs
+else
+  echo "Node.js already installed: $(node -v)"
 fi
 
+# Step 2: Install PM2 if missing
+echo ">> Checking PM2..."
 if ! command -v pm2 >/dev/null 2>&1; then
+  echo "Installing PM2..."
   sudo npm i -g pm2
+else
+  echo "PM2 already installed"
 fi
 
-# Pull latest code (assumes repo already cloned)
-cd "$REPO_DIR"
-.git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "Not a git repo: $REPO_DIR"; exit 1; }
+# Step 3: Install Nginx if missing
+echo ">> Checking Nginx..."
+if ! command -v nginx >/dev/null 2>&1; then
+  echo "Installing Nginx..."
+  sudo apt-get update
+  sudo apt-get install -y nginx
+else
+  echo "Nginx already installed"
+fi
 
-git fetch --all --prune
-GIT_BRANCH=${1:-main}
-git checkout "$GIT_BRANCH"
-git pull --ff-only origin "$GIT_BRANCH"
-
-# Install dependencies
-cd "$BACKEND_DIR" && npm ci
-cd "$FRONTEND_DIR" && npm ci
-
-# Build frontend
-cd "$FRONTEND_DIR" && npm run build
-
-# Deploy frontend build
-sudo mkdir -p "$APP_DIR"
-sudo rsync -a --delete "$FRONTEND_DIR/dist/" "$APP_DIR/"
-
-# PM2 restart backend
+# Step 4: Backend setup
+echo ""
+echo ">> Setting up backend..."
 cd "$BACKEND_DIR"
-pm2 startOrRestart ecosystem.config.js --env production
+
+if [ ! -f .env ]; then
+  echo "Creating .env from .env.example..."
+  cp .env.example .env
+  echo "IMPORTANT: Edit backend/.env and add your API keys!"
+  read -p "Press Enter after you've set your .env values..."
+fi
+
+echo "Installing backend dependencies..."
+npm install
+
+# Create data directory for SQLite
+mkdir -p data
+
+# Step 5: Frontend setup
+echo ""
+echo ">> Setting up frontend..."
+cd "$FRONTEND_DIR"
+echo "Installing frontend dependencies..."
+npm install
+
+echo "Building frontend..."
+npm run build
+
+# Step 6: Deploy frontend
+echo ""
+echo ">> Deploying frontend to $APP_DIR..."
+sudo mkdir -p "$APP_DIR"
+sudo cp -r "$FRONTEND_DIR/dist/"* "$APP_DIR/"
+sudo chown -R www-data:www-data "$APP_DIR"
+
+# Step 7: Setup Nginx
+echo ""
+echo ">> Configuring Nginx..."
+sudo cp "$NGINX_CONF_SOURCE" "$NGINX_CONF_DEST"
+
+# Remove default site if exists
+if [ -L /etc/nginx/sites-enabled/default ]; then
+  sudo rm /etc/nginx/sites-enabled/default
+fi
+
+# Enable ChatVerse site
+sudo ln -sf "$NGINX_CONF_DEST" /etc/nginx/sites-enabled/chatverse
+
+echo "Testing Nginx config..."
+sudo nginx -t
+
+echo "Restarting Nginx..."
+sudo systemctl restart nginx
+sudo systemctl enable nginx
+
+# Step 8: Start backend with PM2
+echo ""
+echo ">> Starting backend with PM2..."
+cd "$BACKEND_DIR"
+pm2 delete chatverse-backend 2>/dev/null || true
+pm2 start ecosystem.config.js
 pm2 save
+pm2 startup | grep -v "PM2" | sudo bash || true
 
-# Nginx reload (assumes config already placed/enabled)
-sudo nginx -t && sudo systemctl reload nginx
-
-echo "Deployment complete."
+echo ""
+echo "============================================"
+echo "✅ DEPLOYMENT COMPLETE!"
+echo "============================================"
+echo ""
+echo "Frontend: http://$(hostname -I | awk '{print $1}')"
+echo "Backend running on port 5000 (proxied via Nginx)"
+echo ""
+echo "Useful commands:"
+echo "  pm2 status              - Check backend status"
+echo "  pm2 logs chatverse-backend - View backend logs"
+echo "  pm2 restart chatverse-backend - Restart backend"
+echo "  sudo systemctl status nginx - Check Nginx status"
+echo ""
+echo "To update later: git pull && bash deploy/deploy.sh"
+echo ""
