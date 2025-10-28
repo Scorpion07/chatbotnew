@@ -101,7 +101,7 @@ echo ""
 echo ">> Starting backend with PM2..."
 cd "$BACKEND_DIR"
 pm2 delete chatverse-backend 2>/dev/null || true
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 pm2 save
 pm2 startup | grep -v "PM2" | sudo bash || true
 
@@ -110,7 +110,8 @@ echo "============================================"
 echo "✅ DEPLOYMENT COMPLETE!"
 echo "============================================"
 echo ""
-echo "Frontend: http://$(hostname -I | awk '{print $1}')"
+echo PUBLIC_IP=$(curl -s https://api.ipify.org || curl -s ifconfig.me || hostname -I | awk '{print $1}')
+echo "Frontend: http://$PUBLIC_IP"
 echo "Backend running on port 5000 (proxied via Nginx)"
 echo ""
 echo "Useful commands:"
