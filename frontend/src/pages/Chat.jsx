@@ -350,9 +350,9 @@ export default function Chat({ setView }) {
     <div className='flex h-[calc(100vh-73px)] bg-gray-50'>
       {showUpgrade && <UpgradeModal />}
       {/* Sidebar */}
-      <div className={`${showSidebar ? 'w-64' : 'w-0'} bg-white border-r border-gray-200 transition-all duration-300 overflow-hidden flex flex-col`}>
+      <div className={`${showSidebar ? 'w-64 md:w-64' : 'w-0'} ${showSidebar ? 'fixed md:relative' : ''} ${showSidebar ? 'inset-y-0 left-0 z-30 md:z-auto' : ''} bg-white border-r border-gray-200 transition-all duration-300 overflow-hidden flex flex-col`}>
         <div className='p-4 border-b border-gray-200'>
-          <button onClick={newConversation} className='w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2'>
+          <button onClick={newConversation} className='w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base'>
             <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
               <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v16m8-8H4' />
             </svg>
@@ -387,8 +387,13 @@ export default function Chat({ setView }) {
 
   {/* Main Chat Area */}
   <div className='flex-1 flex flex-col relative'>
+        {/* Mobile Sidebar Overlay */}
+        {showSidebar && (
+          <div className='md:hidden fixed inset-0 bg-black bg-opacity-50 z-20' onClick={() => setShowSidebar(false)}></div>
+        )}
+
         {/* Top Bar */}
-        <div className='bg-white border-b border-gray-200 px-6 py-4'>
+        <div className='bg-white border-b border-gray-200 px-4 sm:px-6 py-4'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-4'>
               <button onClick={() => setShowSidebar(!showSidebar)} className='p-2 hover:bg-gray-100 rounded-lg transition-colors'>
@@ -495,59 +500,59 @@ export default function Chat({ setView }) {
 
         {/* Bots Panel (top-right) */}
         {showBotsPanel && (
-          <div className='absolute right-6 top-20 w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 z-50'>
+          <div className='absolute right-2 sm:right-6 top-16 sm:top-20 w-80 sm:w-96 max-w-[calc(100vw-1rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 z-50'>
             <div className='flex items-center justify-between mb-3'>
               <h4 className='text-sm font-semibold'>Popular Bots</h4>
-              <button onClick={() => setShowBotsPanel(false)} className='text-xs text-gray-500'>Close</button>
+              <button onClick={() => setShowBotsPanel(false)} className='text-xs text-gray-500 p-1'>Close</button>
             </div>
-            <div className='max-h-96 overflow-y-auto'>
+            <div className='max-h-80 sm:max-h-96 overflow-y-auto'>
               <BotGrid bots={bots} onBotSelect={(bot) => { setSelectedModel(bot.name); setShowBotsPanel(false); }} />
             </div>
           </div>
         )}
 
         {/* Messages */}
-        <div className='flex-1 overflow-y-auto px-6 py-6 space-y-6'>
+        <div className='flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6'>
           {messages.map((message, index) => (
-            <div key={index} className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {message.role === 'assistant' && (
-                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${selectedModelData?.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
-                  <span className='text-xl'>{selectedModelData?.icon}</span>
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br ${selectedModelData?.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                  <span className='text-lg sm:text-xl'>{selectedModelData?.icon}</span>
                 </div>
               )}
-              <div className={`max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
-                <div className={`px-5 py-3 rounded-2xl ${
+              <div className={`max-w-xs sm:max-w-md md:max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
+                <div className={`px-3 sm:px-5 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-sm sm:text-base ${
                   message.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none'
                     : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'
                 }`}>
                   {message.type === 'image' ? (
-                    <div className='space-y-3'>
+                    <div className='space-y-2 sm:space-y-3'>
                       {message.content.startsWith('![') ? (
-                        <img src={message.content.match(/\((.*?)\)/)?.[1]} alt="Uploaded" className='max-w-sm rounded-lg' />
+                        <img src={message.content.match(/\((.*?)\)/)?.[1]} alt="Uploaded" className='max-w-full sm:max-w-sm rounded-lg' />
                       ) : (
                         <p className='whitespace-pre-wrap leading-relaxed'>{message.content}</p>
                       )}
                     </div>
                   ) : message.type === 'search' ? (
-                    <div className='space-y-3'>
+                    <div className='space-y-2 sm:space-y-3'>
                       <p className='whitespace-pre-wrap leading-relaxed'>{message.content}</p>
                       {message.results && (
                         <div className='mt-2 space-y-2'>
                           {message.results.map((result, i) => (
-                            <div key={i} className='p-2 bg-gray-50 rounded'>
-                              <a href={result.url} className='text-indigo-600 hover:underline'>{result.title}</a>
-                              <p className='text-sm text-gray-600'>{result.snippet}</p>
+                            <div key={i} className='p-2 bg-gray-50 rounded text-xs sm:text-sm'>
+                              <a href={result.url} className='text-indigo-600 hover:underline block truncate'>{result.title}</a>
+                              <p className='text-gray-600 text-xs line-clamp-2'>{result.snippet}</p>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
                   ) : message.type === 'audio' ? (
-                    <div className='space-y-3'>
+                    <div className='space-y-2 sm:space-y-3'>
                       <p className='whitespace-pre-wrap leading-relaxed'>{message.content}</p>
                       {message.audioUrl && (
-                        <audio controls src={message.audioUrl} className='mt-2' />
+                        <audio controls src={message.audioUrl} className='mt-2 w-full' />
                       )}
                     </div>
                   ) : (
@@ -587,24 +592,24 @@ export default function Chat({ setView }) {
         </div>
 
         {/* Input Area */}
-        <div className='bg-white border-t border-gray-200 px-6 py-4'>
+        <div className='bg-white border-t border-gray-200 px-4 sm:px-6 py-4'>
           <div className='max-w-4xl mx-auto'>
-            <div className='flex gap-3 items-end'>
+            <div className='flex gap-2 sm:gap-3 items-end'>
               <div className='flex-1 relative'>
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder='Type your message... (Shift+Enter for new line)'
-                  className='w-full px-5 py-4 border-2 border-gray-200 rounded-2xl focus:border-indigo-600 focus:outline-none resize-none pr-12 shadow-sm'
+                  className='w-full px-3 sm:px-5 py-3 sm:py-4 border-2 border-gray-200 rounded-xl sm:rounded-2xl focus:border-indigo-600 focus:outline-none resize-none pr-8 sm:pr-12 shadow-sm text-sm sm:text-base'
                   rows={1}
-                  style={{ minHeight: '56px', maxHeight: '200px' }}
+                  style={{ minHeight: '48px', maxHeight: '200px' }}
                   onInput={(e) => {
                     e.target.style.height = 'auto';
                     e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
                   }}
                 />
-                <div className='absolute right-3 bottom-4 text-xs text-gray-400'>
+                <div className='absolute right-2 sm:right-3 bottom-3 sm:bottom-4 text-xs text-gray-400'>
                   {input.length} chars
                 </div>
               </div>
@@ -612,7 +617,7 @@ export default function Chat({ setView }) {
               <div className='flex flex-col gap-2 pb-2'>
                 <button
                   type='button'
-                  className='bg-indigo-600 text-white rounded-full p-3 shadow hover:bg-indigo-700 transition-colors flex items-center'
+                  className='bg-indigo-600 text-white rounded-full p-2 sm:p-3 shadow hover:bg-indigo-700 transition-colors flex items-center'
                   title='Voice Input'
                   onClick={() => {
                     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -634,7 +639,7 @@ export default function Chat({ setView }) {
                     recognition.start();
                   }}
                 >
-                  <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <svg className='w-4 h-4 sm:w-5 sm:h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                     <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 18v-6m0 0a4 4 0 10-8 0v6a4 4 0 008 0zm0 0a4 4 0 008 0v-6a4 4 0 00-8 0z' />
                   </svg>
                 </button>
@@ -642,7 +647,7 @@ export default function Chat({ setView }) {
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || isTyping}
-                className={`p-4 rounded-xl font-medium transition-all flex items-center justify-center shadow-lg ${
+                className={`p-3 sm:p-4 rounded-xl font-medium transition-all flex items-center justify-center shadow-lg text-sm sm:text-base ${
                   input.trim() && !isTyping
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-xl transform hover:scale-105'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
