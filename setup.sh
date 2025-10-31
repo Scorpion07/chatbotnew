@@ -274,8 +274,8 @@ SERVER_IP=$(curl -s https://api.ipify.org 2>/dev/null || curl -s ifconfig.me 2>/
 # Copy and configure nginx config
 sudo cp "$PROJECT_DIR/deploy/nginx.conf" "$NGINX_CONF"
 
-# Update the nginx config with current server IP if needed
-sudo sed -i "s/20\.55\.236\.2/$SERVER_IP/g" "$NGINX_CONF"
+# Note: Nginx config uses talk-sphere.com domain - no IP replacement needed
+print_status "Nginx configured for domain: talk-sphere.com"
 
 # Remove default nginx site
 if [ -L /etc/nginx/sites-enabled/default ]; then
@@ -374,7 +374,8 @@ echo -e "${GREEN}🎉 SETUP COMPLETE! 🎉${NC}"
 echo "============================================"
 echo ""
 echo -e "${BLUE}🌐 Your ChatVerse AI is now running at:${NC}"
-echo -e "${GREEN}   http://$SERVER_IP${NC}"
+echo -e "${GREEN}   https://talk-sphere.com${NC}"
+echo -e "${BLUE}   (Also accessible via IP: http://$SERVER_IP)${NC}"
 echo ""
 echo -e "${BLUE}📧 Test Accounts:${NC}"
 echo -e "${GREEN}   Premium: premium1@test.com / password123${NC}"
@@ -399,7 +400,7 @@ echo -e "${BLUE}🔄 To update later:${NC}"
 echo "   cd $PROJECT_DIR && ./quick-deploy.sh"
 echo ""
 echo -e "${YELLOW}📝 Next Steps:${NC}"
-echo "1. Visit your website at http://$SERVER_IP"
+echo "1. Visit your website at https://talk-sphere.com"
 echo "2. Login with test accounts to verify functionality"
 echo "3. Edit backend/.env to add your API keys for AI features"
 echo "4. Consider setting up SSL/HTTPS for production use"
