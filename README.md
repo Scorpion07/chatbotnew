@@ -11,57 +11,23 @@ A beautiful, modern AI chatbot interface that allows you to interact with multip
 - **Admin Dashboard**: Monitor stats and manage AI bots
 - **Responsive Design**: Works perfectly on desktop, tablet, and mobile
 - **Real-time Updates**: WebSocket integration for live updates
-- **User Authentication**: Premium and normal user tiers with test accounts
-- **Production Ready**: Nginx reverse proxy with PM2 process management
 
-## 🚀 One-Command Setup
-
-### 🎯 Quick Deploy (Recommended)
-
-For a fresh Ubuntu/Debian server, just run:
-
-```bash
-wget https://raw.githubusercontent.com/Scorpion07/chatbotnew/main/setup.sh
-chmod +x setup.sh
-./setup.sh
-```
-
-**That's it!** The script will:
-- ✅ Install all dependencies (Node.js, PM2, Nginx)
-- ✅ Clone the repository and build the application
-- ✅ Setup database with test accounts
-- ✅ Configure Nginx reverse proxy
-- ✅ Start all services and make them auto-restart
-
-Your website will be live at `http://YOUR_SERVER_IP`
-
-### 📧 Test Accounts Available
-
-- **Premium**: `premium1@test.com` / `password123`
-- **Normal**: `normal1@test.com` / `password123`
-
-## 🔧 Manual Installation
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js (v20 or higher)
+- Node.js (v16 or higher)
 - npm or yarn
 
 ### Installation
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/Scorpion07/chatbotnew.git
-   cd chatbotnew
-   ```
-
-2. **Install Backend Dependencies**
+1. **Install Backend Dependencies**
    ```bash
    cd backend
    npm install
    ```
 
-3. **Install Frontend Dependencies**
+2. **Install Frontend Dependencies**
    ```bash
    cd ../frontend
    npm install

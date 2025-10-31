@@ -14,12 +14,10 @@ export default function Signup({ onSignup, setView }) {
     setLoading(true);
     setError('');
     try {
-      await axios.post('/api/auth/signup', { email, password });
+  await axios.post('/api/auth/signup', { email, password });
       setSuccess(true);
       setError('');
-      setTimeout(() => {
-        setView('login');
-      }, 1500);
+      onSignup?.();
     } catch (err) {
       setError(err.response?.data?.error || 'Signup failed');
     } finally {
@@ -58,7 +56,7 @@ export default function Signup({ onSignup, setView }) {
             </div>
           </div>
           {error && <div className="text-red-500 text-sm">{error}</div>}
-          {success && <div className="text-green-600 text-sm">✅ Account created successfully! Redirecting to login...</div>}
+          {success && <div className="text-green-600 text-sm">Signup successful! Please login.</div>}
           <button type="submit" disabled={loading} className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
             {loading ? 'Creating account...' : 'Create account'}
           </button>

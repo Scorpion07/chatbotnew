@@ -80,9 +80,6 @@ npm install
 # Create data directory for SQLite
 mkdir -p data
 
-# Create logs directory for PM2
-mkdir -p logs
-
 # Step 5: Frontend setup
 echo ""
 echo ">> Setting up frontend..."
