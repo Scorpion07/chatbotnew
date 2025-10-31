@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-const API = '';
+const API = 'http://localhost:5000';
 
 export default function Admin() {
   const [bots, setBots] = useState([]);

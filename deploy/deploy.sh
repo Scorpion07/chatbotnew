@@ -12,13 +12,6 @@ APP_DIR="/var/www/chatverse"
 NGINX_CONF_SOURCE="$REPO_DIR/deploy/nginx.conf"
 NGINX_CONF_DEST="/etc/nginx/sites-available/chatverse"
 
-# Check if running as root
-if [[ $EUID -eq 0 ]]; then
-   echo "This script should NOT be run as root for security reasons."
-   echo "Please run as a regular user with sudo privileges."
-   exit 1
-fi
-
 # Step 1: Install Node.js if missing
 echo ">> Checking Node.js..."
 if ! command -v node >/dev/null 2>&1; then
@@ -44,7 +37,6 @@ if ! command -v nginx >/dev/null 2>&1; then
   echo "Installing Nginx..."
   sudo apt-get update
   sudo apt-get install -y nginx
-  sudo systemctl enable nginx
 else
   echo "Nginx already installed"
 fi
@@ -54,21 +46,8 @@ echo ""
 echo ">> Setting up backend..."
 cd "$BACKEND_DIR"
 
-# Check for .env file
 if [ ! -f .env ]; then
-  echo "⚠️  WARNING: No .env file found!"
-  echo "Please create a .env file with your API keys:"
-  echo "OPENAI_API_KEY=your_openai_api_key"
-  echo "CLAUDE_API_KEY=your_claude_api_key"
-  echo "GEMINI_API_KEY=your_gemini_api_key"
-  echo "JWT_SECRET=your_jwt_secret"
-  echo ""
-  read -p "Continue without .env file? (y/N): " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    exit 1
-  fi
-fi
+  echo "Creating .env from .env.example..."
   cp .env.example .env
   echo "IMPORTANT: Edit backend/.env and add your API keys!"
   read -p "Press Enter after you've set your .env values..."
@@ -122,7 +101,7 @@ echo ""
 echo ">> Starting backend with PM2..."
 cd "$BACKEND_DIR"
 pm2 delete chatverse-backend 2>/dev/null || true
-pm2 start ecosystem.config.cjs
+pm2 start ecosystem.config.js
 pm2 save
 pm2 startup | grep -v "PM2" | sudo bash || true
 
@@ -131,8 +110,7 @@ echo "============================================"
 echo "✅ DEPLOYMENT COMPLETE!"
 echo "============================================"
 echo ""
-echo PUBLIC_IP=$(curl -s https://api.ipify.org || curl -s ifconfig.me || hostname -I | awk '{print $1}')
-echo "Frontend: http://$PUBLIC_IP"
+echo "Frontend: http://$(hostname -I | awk '{print $1}')"
 echo "Backend running on port 5000 (proxied via Nginx)"
 echo ""
 echo "Useful commands:"
