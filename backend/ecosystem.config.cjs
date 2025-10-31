@@ -12,8 +12,9 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 5000
       },
-      error_file: '/var/log/chatverse/backend-error.log',
-      out_file: '/var/log/chatverse/backend-out.log',
+      error_file: './logs/backend-error.log',
+      out_file: './logs/backend-out.log',
+      log_file: './logs/backend-combined.log',
       time: true
     }
   ]

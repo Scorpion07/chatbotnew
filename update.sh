@@ -55,6 +55,9 @@ echo ""
 echo "🔄 Restarting services..."
 cd "$BACKEND_DIR"
 
+# Ensure logs directory exists
+mkdir -p logs
+
 # Restart backend
 echo "   Restarting backend..."
 pm2 restart chatverse-backend || pm2 start ecosystem.config.cjs
