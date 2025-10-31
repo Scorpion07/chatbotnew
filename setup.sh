@@ -137,6 +137,22 @@ print_status "Installing backend dependencies..."
 npm install
 print_success "Backend dependencies installed"
 
+# Verify critical dependencies
+print_status "Verifying critical dependencies..."
+if ! npm list bcryptjs > /dev/null 2>&1; then
+    print_status "Installing bcryptjs..."
+    npm install bcryptjs
+fi
+if ! npm list sequelize > /dev/null 2>&1; then
+    print_status "Installing sequelize..."
+    npm install sequelize
+fi
+if ! npm list sqlite3 > /dev/null 2>&1; then
+    print_status "Installing sqlite3..."
+    npm install sqlite3
+fi
+print_success "Dependencies verified"
+
 # Create necessary directories
 print_status "Creating required directories..."
 mkdir -p data
@@ -186,55 +202,13 @@ db.sequelize.sync({ force: false }).then(() => {
 "
 
 print_status "Creating test accounts..."
-# Create test accounts script
-node -e "
-const db = require('./src/models');
-const bcrypt = require('bcrypt');
-
-async function createTestAccounts() {
-    try {
-        await db.sequelize.sync();
-        
-        // Check if accounts already exist
-        const existingUsers = await db.User.count();
-        if (existingUsers > 0) {
-            console.log('Test accounts already exist. Skipping creation.');
-            process.exit(0);
-        }
-        
-        const accounts = [];
-        
-        // Create 10 premium accounts
-        for (let i = 1; i <= 10; i++) {
-            accounts.push({
-                email: \`premium\${i}@test.com\`,
-                password: await bcrypt.hash('password123', 10),
-                isPremium: true
-            });
-        }
-        
-        // Create 2 normal accounts
-        for (let i = 1; i <= 2; i++) {
-            accounts.push({
-                email: \`normal\${i}@test.com\`,
-                password: await bcrypt.hash('password123', 10),
-                isPremium: false
-            });
-        }
-        
-        await db.User.bulkCreate(accounts);
-        console.log('✅ Created 12 test accounts (10 premium + 2 normal)');
-        console.log('📧 Login with: premium1@test.com / password123');
-        console.log('📧 Or: normal1@test.com / password123');
-        process.exit(0);
-    } catch (error) {
-        console.error('Error creating test accounts:', error);
-        process.exit(1);
-    }
-}
-
-createTestAccounts();
-"
+# Use the npm script instead of inline code to avoid module issues
+if npm run create-test-accounts; then
+    print_success "Test accounts created successfully"
+else
+    print_warning "Test account creation failed, but continuing setup..."
+    print_warning "You can create them manually later with: npm run create-test-accounts"
+fi
 
 print_success "Database and test accounts setup complete"
 
