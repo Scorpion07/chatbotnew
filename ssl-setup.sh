@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SSL Setup Script for talk-sphere.com
-# Run this after DNS is pointing to your server
+# Run this after DNS is pointing to your server and the site is working on HTTP
 
 set -e
 
@@ -15,6 +15,18 @@ if [[ $EUID -eq 0 ]]; then
    exit 1
 fi
 
+# Check if site is accessible via HTTP first
+echo ">> Checking if site is accessible via HTTP..."
+if curl -s -o /dev/null -w "%{http_code}" http://talk-sphere.com | grep -q "200\|30[0-9]"; then
+    echo "✅ Site is accessible via HTTP"
+else
+    echo "❌ Site is not accessible via HTTP. Please check:"
+    echo "   1. DNS is pointing to this server"
+    echo "   2. Site is running (pm2 status)"
+    echo "   3. Nginx is running (sudo systemctl status nginx)"
+    exit 1
+fi
+
 # Install Certbot
 echo ">> Installing Certbot..."
 sudo apt-get update
@@ -23,14 +35,6 @@ sudo apt-get install -y certbot python3-certbot-nginx
 # Get SSL certificate
 echo ">> Obtaining SSL certificate for talk-sphere.com..."
 sudo certbot --nginx -d talk-sphere.com -d www.talk-sphere.com --non-interactive --agree-tos --email admin@talk-sphere.com
-
-# Update nginx config to enable SSL lines
-echo ">> Updating nginx configuration..."
-sudo sed -i 's/# ssl_certificate/ssl_certificate/g' /etc/nginx/sites-available/chatverse
-sudo sed -i 's/# ssl_certificate_key/ssl_certificate_key/g' /etc/nginx/sites-available/chatverse
-sudo sed -i 's/# ssl_protocols/ssl_protocols/g' /etc/nginx/sites-available/chatverse
-sudo sed -i 's/# ssl_ciphers/ssl_ciphers/g' /etc/nginx/sites-available/chatverse
-sudo sed -i 's/# ssl_prefer_server_ciphers/ssl_prefer_server_ciphers/g' /etc/nginx/sites-available/chatverse
 
 # Test nginx config
 if sudo nginx -t; then
