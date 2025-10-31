@@ -1,6 +1,8 @@
-# 🤖 ChatVerse AI
+# 🌐 TalkSphere
 
 A modern, mobile-responsive chat application with multiple AI models (GPT-4, Claude, Gemini) accessible from one beautiful interface.
+
+**Live Demo:** [https://talk-sphere.com](https://talk-sphere.com)
 
 ## 🚀 One-Command Setup
 

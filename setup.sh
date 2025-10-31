@@ -9,7 +9,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}================================================${NC}"
-echo -e "${BLUE}    ChatVerse AI - Complete Setup Script      ${NC}"
+echo -e "${BLUE}    TalkSphere - Complete Setup Script         ${NC}"
 echo -e "${BLUE}================================================${NC}"
 echo ""
 
@@ -252,7 +252,7 @@ SERVER_IP=$(curl -s ifconfig.me || hostname -I | awk '{print $1}')
 
 echo ""
 echo -e "${GREEN}================================================${NC}"
-echo -e "${GREEN}    🎉 ChatVerse AI Setup Complete! 🎉       ${NC}"
+echo -e "${GREEN}    🎉 TalkSphere Setup Complete! 🎉          ${NC}"
 echo -e "${GREEN}================================================${NC}"
 echo ""
 echo -e "${YELLOW}📋 Setup Summary:${NC}"
@@ -280,4 +280,4 @@ echo -e "• Restart backend: pm2 restart all"
 echo -e "• Check status: pm2 status"
 echo -e "• Reload nginx: sudo systemctl reload nginx"
 echo ""
-echo -e "${GREEN}✅ All done! Your ChatVerse AI is ready to use! 🚀${NC}"
+echo -e "${GREEN}✅ All done! Your TalkSphere is ready to use! 🚀${NC}"
