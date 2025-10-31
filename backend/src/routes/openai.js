@@ -16,14 +16,14 @@ const upload = multer({ dest: "uploads/" });
 
 // ✅ Validate API key
 if (!process.env.OPENAI_API_KEY) {
-  console.error("❌ Missing OPENAI_API_KEY in environment variables.");
-  process.exit(1);
+  console.error("⚠️  Warning: OPENAI_API_KEY not found. AI features will be disabled.");
+  console.log("🔧 For testing authentication, the server will continue running.");
 }
 
-// ✅ Initialize OpenAI client
-const openai = new OpenAI({
+// ✅ Initialize OpenAI client (only if API key exists)
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
+}) : null;
 
 // =====================================================
 // 🧠 TEXT CHAT ENDPOINT (with auth and free-tier limit)
@@ -33,6 +33,10 @@ router.post("/chat", authRequired, async (req, res) => {
 
   if (!message) {
     return res.status(400).json({ error: "Message is required." });
+  }
+
+  if (!openai) {
+    return res.status(503).json({ error: "AI service unavailable. Please configure OPENAI_API_KEY." });
   }
 
   try {
