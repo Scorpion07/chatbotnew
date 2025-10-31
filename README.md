@@ -1,53 +1,59 @@
-# ChatVerse AI - Multi-Model AI Chat Interface
+# 🤖 ChatVerse AI
 
-A beautiful, modern AI chatbot interface that allows you to interact with multiple AI models from a single, sleek platform.
+A modern, mobile-responsive chat application with multiple AI models (GPT-4, Claude, Gemini) accessible from one beautiful interface.
 
-## 🌟 Features
+## 🚀 One-Command Setup
 
-- **Multi-Model Support**: Switch between GPT-4, Claude, Gemini, and Llama with a single click
-- **Beautiful UI**: Modern, gradient-based design with smooth animations
-- **Real-time Chat**: Instant messaging with typing indicators
-- **Conversation History**: Manage multiple conversations with sidebar navigation
-- **Admin Dashboard**: Monitor stats and manage AI bots
-- **Responsive Design**: Works perfectly on desktop, tablet, and mobile
-- **Real-time Updates**: WebSocket integration for live updates
+```bash
+curl -fsSL https://raw.githubusercontent.com/Scorpion07/chatbotnew/main/install.sh | bash
+```
 
-## 🚀 Getting Started
+**That's it!** The script handles everything:
+- ✅ System dependencies (Node.js, Nginx, SQLite)
+- ✅ Build tools (bcrypt native compilation)
+- ✅ Database setup and initialization
+- ✅ Frontend build and deployment
+- ✅ Backend with PM2 process management
+- ✅ Nginx reverse proxy configuration
+- ✅ SSL-ready setup
+- ✅ Test account creation
+- ✅ Mobile-responsive design
 
-### Prerequisites
+## 📱 Features
 
-- Node.js (v16 or higher)
-- npm or yarn
+- **Multiple AI Models**: GPT-4, Claude, Gemini, Perplexity
+- **Mobile Responsive**: Works perfectly on all devices
+- **User Authentication**: JWT-based auth system
+- **Premium Features**: Subscription model with usage limits
+- **Admin Panel**: User management and analytics
+- **Real-time Chat**: WebSocket-powered messaging
+- **File Uploads**: Image and document support
+- **Voice Input**: Speech-to-text integration
 
-### Installation
+## 🔑 Default Login
 
-1. **Install Backend Dependencies**
+After setup, use these test accounts:
+- **Free User**: test1@test.com / password123
+- **Premium User**: premium1@test.com / password123
+
+## ⚙️ API Keys Setup
+
+1. Edit the environment file:
    ```bash
-   cd backend
-   npm install
+   nano backend/.env
    ```
 
-2. **Install Frontend Dependencies**
-   ```bash
-   cd ../frontend
-   npm install
+2. Add your API keys:
+   ```env
+   OPENAI_API_KEY=your_openai_key
+   CLAUDE_API_KEY=your_claude_key
+   GEMINI_API_KEY=your_gemini_key
    ```
 
-### Running the Application
-
-1. **Start the Backend Server** (from the `backend` directory)
+3. Restart the backend:
    ```bash
-   npm run dev
+   pm2 restart all
    ```
-   The backend will run on `http://localhost:5000`
-
-2. **Start the Frontend** (from the `frontend` directory, in a new terminal)
-   ```bash
-   npm run dev
-   ```
-   The frontend will run on `http://localhost:5173` (or similar Vite port)
-
-3. **Open your browser** and navigate to the frontend URL
 
 ## 📁 Project Structure
 
