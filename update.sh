@@ -23,6 +23,11 @@ echo "📦 Installing backend dependencies..."
 cd "$BACKEND_DIR"
 npm install
 
+# Create test accounts if database is empty
+echo ""
+echo "👥 Setting up test accounts..."
+npm run create-test-accounts
+
 # Install/update frontend dependencies and build
 echo ""
 echo "📦 Installing frontend dependencies..."
