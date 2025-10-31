@@ -8,16 +8,13 @@ module.exports = {
       exec_mode: 'fork',
       autorestart: true,
       watch: false,
-      max_restarts: 10,
       env: {
         NODE_ENV: 'production',
         PORT: 5000
       },
-      error_file: './logs/backend-error.log',
-      out_file: './logs/backend-out.log',
-      log_file: './logs/backend-combined.log',
-      time: true,
-      merge_logs: true
+      error_file: '/var/log/chatverse/backend-error.log',
+      out_file: '/var/log/chatverse/backend-out.log',
+      time: true
     }
   ]
 };
