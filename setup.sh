@@ -166,13 +166,14 @@ if [ ! -f ".env" ]; then
         cp .env.example .env
         print_warning ".env file created from example. You may want to edit it with your API keys."
     else
-        # Create a basic .env file
+        # Create a basic .env file with absolute paths
+        DB_PATH="$BACKEND_DIR/data/database.sqlite"
         cat > .env << EOF
-# Database
-DATABASE_URL=sqlite:./data/database.sqlite
+# Database - Full path for production
+DATABASE_URL=sqlite:$DB_PATH
 
 # JWT Secret (change this in production)
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-$(date +%s)
 
 # API Keys (optional - add your keys for AI features)
 # OPENAI_API_KEY=your_openai_api_key
@@ -182,24 +183,55 @@ JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 # Server Configuration
 PORT=5000
 NODE_ENV=production
+
+# Project paths for reference
+PROJECT_DIR=$PROJECT_DIR
+BACKEND_DIR=$BACKEND_DIR
+FRONTEND_DIR=$FRONTEND_DIR
 EOF
-        print_warning ".env file created with defaults. Add your API keys for full functionality."
+        print_warning ".env file created with production settings. Database path: $DB_PATH"
     fi
 fi
 
+# Verify database directory exists and has proper permissions
+print_status "Setting up database directory..."
+chmod 755 data
+touch data/database.sqlite
+chmod 644 data/database.sqlite
+print_success "Database directory configured"
+
 # Initialize database and create test accounts
 print_status "Initializing database..."
+
+# Verify database file exists and show its location
+DB_FILE="$BACKEND_DIR/data/database.sqlite"
+print_status "Database will be located at: $DB_FILE"
+
 # First, let's make sure the database is created
-node -e "
+if node -e "
 const db = require('./src/models');
 db.sequelize.sync({ force: false }).then(() => {
-    console.log('Database synchronized');
+    console.log('✅ Database synchronized successfully');
+    console.log('📁 Database file:', require('path').resolve('./data/database.sqlite'));
     process.exit(0);
 }).catch(err => {
-    console.error('Database error:', err);
+    console.error('❌ Database error:', err);
     process.exit(1);
 });
-"
+"; then
+    print_success "Database initialized successfully"
+    
+    # Verify the database file was created
+    if [ -f "$DB_FILE" ]; then
+        DB_SIZE=$(ls -lh "$DB_FILE" | awk '{print $5}')
+        print_success "Database file created: $DB_SIZE"
+    else
+        print_error "Database file not found at: $DB_FILE"
+    fi
+else
+    print_error "Database initialization failed"
+    exit 1
+fi
 
 print_status "Creating test accounts..."
 # Use the npm script instead of inline code to avoid module issues
@@ -303,6 +335,24 @@ fi
 # Step 14: Final verification
 print_status "Verifying installation..."
 
+# Check database
+DB_FILE="$BACKEND_DIR/data/database.sqlite"
+if [ -f "$DB_FILE" ]; then
+    DB_SIZE=$(ls -lh "$DB_FILE" | awk '{print $5}')
+    print_success "Database exists: $DB_SIZE at $DB_FILE"
+    
+    # Test database connection
+    cd "$BACKEND_DIR"
+    if USER_COUNT=$(node -e "const db = require('./src/models'); db.User.count().then(count => { console.log(count); process.exit(0); }).catch(() => process.exit(1))" 2>/dev/null); then
+        print_success "Database connection OK - $USER_COUNT users found"
+    else
+        print_warning "Database exists but connection test failed"
+    fi
+    cd - > /dev/null
+else
+    print_error "Database not found at: $DB_FILE"
+fi
+
 # Check if backend is running
 if pm2 list | grep -q "chatverse-backend.*online"; then
     print_success "Backend is running"
@@ -330,7 +380,12 @@ echo -e "${BLUE}📧 Test Accounts:${NC}"
 echo -e "${GREEN}   Premium: premium1@test.com / password123${NC}"
 echo -e "${GREEN}   Normal:  normal1@test.com / password123${NC}"
 echo ""
-echo -e "${BLUE}🔧 Useful Commands:${NC}"
+echo -e "${BLUE}�️ Database Location:${NC}"
+echo -e "${GREEN}   $BACKEND_DIR/data/database.sqlite${NC}"
+echo -e "${BLUE}   Type: SQLite (file-based)${NC}"
+echo -e "${BLUE}   Users: 12 test accounts created${NC}"
+echo ""
+echo -e "${BLUE}�🔧 Useful Commands:${NC}"
 echo "   pm2 status                    - Check backend status"
 echo "   pm2 logs chatverse-backend    - View backend logs"
 echo "   pm2 restart chatverse-backend - Restart backend"
