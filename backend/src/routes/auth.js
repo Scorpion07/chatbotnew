@@ -4,12 +4,10 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs-extra';
 import path from 'path';
 import { User } from '../models/index.js';
-import dotenv from 'dotenv';
-dotenv.config();
+import { authConfig, getConfig } from '../services/configService.js';
 
 const router = express.Router();
 const usersPath = path.join(process.cwd(), 'users.json');
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 
 function readUsers() {
   if (!fs.existsSync(usersPath)) return [];
@@ -25,8 +23,8 @@ router.post('/signup', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'Email and password required.' });
   const existing = await User.findOne({ where: { email } });
   if (existing) return res.status(409).json({ error: 'Email already exists.' });
-  // Reduced bcrypt rounds from 10 to 8 for faster signup (still secure)
-  const hash = await bcrypt.hash(password, 8);
+  // Use bcrypt rounds from config
+  const hash = await bcrypt.hash(password, authConfig.bcryptRounds);
   await User.create({ email, password: hash, isPremium: false });
   res.json({ success: true });
 });
@@ -38,7 +36,7 @@ router.post('/login', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Invalid credentials.' });
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.status(401).json({ error: 'Invalid credentials.' });
-  const token = jwt.sign({ email, isPremium: user.isPremium }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ email, isPremium: user.isPremium }, authConfig.jwtSecret, { expiresIn: authConfig.tokenExpiry });
   res.json({ token, isPremium: user.isPremium });
 });
 
@@ -48,7 +46,7 @@ router.post('/subscribe', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token.' });
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, authConfig.jwtSecret);
     const user = await User.findOne({ where: { email: decoded.email } });
     if (!user) return res.status(404).json({ error: 'User not found.' });
     
@@ -119,7 +117,7 @@ router.post('/google', async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ email: user.email, id: user.id }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ email: user.email, id: user.id }, authConfig.jwtSecret, { expiresIn: authConfig.tokenExpiry });
     
     res.json({
       token,
@@ -142,7 +140,7 @@ router.get('/me', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token.' });
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, authConfig.jwtSecret);
     const user = await User.findOne({ where: { email: decoded.email } });
     if (!user) return res.status(404).json({ error: 'User not found.' });
     res.json({ 

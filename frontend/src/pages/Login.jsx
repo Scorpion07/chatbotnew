@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import config from '../config.js';
+import config, { getApiUrl, isFeatureEnabled } from '../config.js';
 
 export default function Login({ onLogin, setView }) {
   const [email, setEmail] = useState('');
@@ -11,9 +11,9 @@ export default function Login({ onLogin, setView }) {
 
   // Initialize Google Sign-In
   useEffect(() => {
-    if (window.google && config.GOOGLE_CLIENT_ID !== "1077821208623-csoqpoks6lv8jjpgq4a19pgjmunvfg5k.apps.googleusercontent.com") {
+    if (window.google && isFeatureEnabled('googleAuth') && config.auth.googleClientId !== "YOUR_GOOGLE_CLIENT_ID") {
       window.google.accounts.id.initialize({
-        client_id: config.GOOGLE_CLIENT_ID,
+        client_id: config.auth.googleClientId,
         callback: handleGoogleSignIn,
         auto_select: false,
       });
@@ -25,11 +25,11 @@ export default function Login({ onLogin, setView }) {
       setLoading(true);
       setError('');
       
-      const res = await axios.post('/api/auth/google', {
+      const res = await axios.post(getApiUrl('/api/auth/google'), {
         credential: response.credential
       });
       
-      localStorage.setItem('token', res.data.token);
+      localStorage.setItem(config.auth.tokenKey, res.data.token);
       onLogin?.(res.data.user);
     } catch (err) {
       setError(err.response?.data?.error || 'Google sign-in failed');
@@ -39,7 +39,12 @@ export default function Login({ onLogin, setView }) {
   };
 
   const handleGoogleButtonClick = () => {
-    if (config.GOOGLE_CLIENT_ID === "1077821208623-csoqpoks6lv8jjpgq4a19pgjmunvfg5k.apps.googleusercontent.com") {
+    if (!isFeatureEnabled('googleAuth')) {
+      setError('Google Sign-In is disabled.');
+      return;
+    }
+    
+    if (config.auth.googleClientId === "YOUR_GOOGLE_CLIENT_ID") {
       setError('Google Sign-In not configured. Please contact administrator.');
       return;
     }
@@ -56,8 +61,8 @@ export default function Login({ onLogin, setView }) {
     setLoading(true);
     setError('');
     try {
-  const res = await axios.post('/api/auth/login', { email, password });
-      localStorage.setItem('token', res.data.token);
+      const res = await axios.post(getApiUrl('/api/auth/login'), { email, password });
+      localStorage.setItem(config.auth.tokenKey, res.data.token);
       onLogin?.(res.data.isPremium);
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');

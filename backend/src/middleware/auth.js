@@ -1,16 +1,13 @@
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
 import { User } from '../models/index.js';
-dotenv.config();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
+import { authConfig } from '../services/configService.js';
 
 export async function authRequired(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Unauthorized: No token provided' });
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, authConfig.jwtSecret);
     // Load fresh user from DB to ensure up-to-date premium flag
     const user = await User.findOne({ where: { email: decoded.email } });
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
