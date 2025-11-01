@@ -1,5 +1,5 @@
 @echo off
-echo Starting ChatVerse AI...
+echo Starting TalkSphere AI...
 echo.
 echo Starting Backend Server...
 start cmd /k "cd backend && npm run dev"
@@ -8,7 +8,7 @@ echo.
 echo Starting Frontend...
 start cmd /k "cd frontend && npm run dev"
 echo.
-echo ChatVerse AI is starting!
+echo TalkSphere AI is starting!
 echo Backend: http://localhost:5000
 echo Frontend: http://localhost:5173
 echo.

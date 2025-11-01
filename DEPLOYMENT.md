@@ -1,4 +1,4 @@
-# ChatVerse AI - Azure Deployment Guide
+# TalkSphere AI - Azure Deployment Guide
 
 ## Quick Deploy (One Command)
 

@@ -41,7 +41,7 @@ export default function Home({ setView }) {
                 <div className='w-3 h-3 bg-yellow-500 rounded-full'></div>
                 <div className='w-3 h-3 bg-green-500 rounded-full'></div>
               </div>
-              <div className='flex-1 text-center text-gray-400 text-sm font-medium'>ChatVerse AI</div>
+              <div className='flex-1 text-center text-gray-400 text-sm font-medium'>TalkSphere AI</div>
             </div>
             <div className='p-8 bg-gradient-to-br from-gray-50 to-white'>
               <div className='flex gap-3 mb-6'>
@@ -146,7 +146,7 @@ export default function Home({ setView }) {
         <div className='max-w-7xl mx-auto px-6'>
           <div className='grid md:grid-cols-4 gap-8 mb-8'>
             <div>
-              <h3 className='text-white font-bold mb-4'>ChatVerse AI</h3>
+              <h3 className='text-white font-bold mb-4'>TalkSphere AI</h3>
               <p className='text-sm'>Your gateway to the world of AI conversations.</p>
             </div>
             <div>
@@ -175,7 +175,7 @@ export default function Home({ setView }) {
             </div>
           </div>
           <div className='border-t border-gray-800 pt-8 text-center text-sm'>
-            <p>© 2025 ChatVerse AI. All rights reserved.</p>
+            <p>© 2025 TalkSphere AI. All rights reserved.</p>
           </div>
         </div>
       </footer>

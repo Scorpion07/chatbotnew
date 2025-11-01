@@ -35,7 +35,7 @@ export default function Signup({ onSignup, setView }) {
             </svg>
           </div>
           <h2 className="text-2xl font-bold mt-3">Create your account</h2>
-          <p className="text-sm text-gray-600">Join ChatVerse AI in seconds</p>
+          <p className="text-sm text-gray-600">Join TalkSphere AI in seconds</p>
         </div>
         <form onSubmit={handleSignup} className="space-y-4">
           <div>

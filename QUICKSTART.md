@@ -113,5 +113,5 @@ Check the full `README.md` for detailed documentation.
 
 ---
 
-**Enjoy ChatVerse AI! 🎉**
+**Enjoy TalkSphere AI! 🎉**
 

@@ -1,4 +1,4 @@
-# ChatVerse AI - Multi-Model AI Chat Interface
+# TalkSphere AI - Multi-Model AI Chat Interface
 
 A beautiful, modern AI chatbot interface that allows you to interact with multiple AI models from a single, sleek platform.
 

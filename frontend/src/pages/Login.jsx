@@ -33,7 +33,7 @@ export default function Login({ onLogin, setView }) {
             </svg>
           </div>
           <h2 className="text-2xl font-bold mt-3">Welcome back</h2>
-          <p className="text-sm text-gray-600">Sign in to continue to ChatVerse AI</p>
+          <p className="text-sm text-gray-600">Sign in to continue to TalkSphere AI</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>

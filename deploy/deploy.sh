@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== ChatVerse AI Auto-Deploy Script ==="
+echo "=== TalkSphere AI Auto-Deploy Script ==="
 echo ""
 
 # Variables - CHANGE THESE IF NEEDED

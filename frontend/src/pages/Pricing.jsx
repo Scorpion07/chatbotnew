@@ -7,7 +7,7 @@ export default function Pricing({ setView }) {
   const plans = [
     {
       name: 'Free',
-      description: 'Perfect for trying out ChatVerse AI',
+      description: 'Perfect for trying out TalkSphere AI',
       price: { monthly: 0, annual: 0 },
       features: [
         '50 messages per month',

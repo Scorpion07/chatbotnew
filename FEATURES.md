@@ -1,4 +1,4 @@
-# 🎯 ChatVerse AI - Complete Features List
+# 🎯 TalkSphere AI - Complete Features List
 
 ## 🏠 Home Page Features
 
