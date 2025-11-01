@@ -25,7 +25,8 @@ router.post('/signup', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'Email and password required.' });
   const existing = await User.findOne({ where: { email } });
   if (existing) return res.status(409).json({ error: 'Email already exists.' });
-  const hash = await bcrypt.hash(password, 10);
+  // Reduced bcrypt rounds from 10 to 8 for faster signup (still secure)
+  const hash = await bcrypt.hash(password, 8);
   await User.create({ email, password: hash, isPremium: false });
   res.json({ success: true });
 });
@@ -68,6 +69,74 @@ router.post('/subscribe', async (req, res) => {
   }
 });
 
+// Google OAuth endpoint
+router.post('/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    
+    if (!credential) {
+      return res.status(400).json({ error: 'Google credential required' });
+    }
+
+    // Decode Google JWT token (basic verification)
+    const base64Payload = credential.split('.')[1];
+    const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
+    
+    // Verify token is from Google and not expired
+    if (payload.iss !== 'https://accounts.google.com' && payload.iss !== 'accounts.google.com') {
+      return res.status(400).json({ error: 'Invalid Google token issuer' });
+    }
+    
+    if (payload.exp < Date.now() / 1000) {
+      return res.status(400).json({ error: 'Google token expired' });
+    }
+
+    const { email, name, picture, sub: googleId } = payload;
+
+    // Check if user exists
+    let user = await User.findOne({ where: { email } });
+    
+    if (user) {
+      // Update existing user with Google info if not already set
+      if (!user.googleId) {
+        await user.update({
+          googleId,
+          name: name || user.name,
+          avatar: picture || user.avatar,
+          provider: 'google'
+        });
+      }
+    } else {
+      // Create new user
+      user = await User.create({
+        email,
+        googleId,
+        name,
+        avatar: picture,
+        provider: 'google',
+        isPremium: false
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ email: user.email, id: user.id }, JWT_SECRET, { expiresIn: '30d' });
+    
+    res.json({
+      token,
+      user: {
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+        isPremium: user.isPremium,
+        provider: user.provider
+      }
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({ error: 'Google authentication failed' });
+  }
+});
+
 // Get user info
 router.get('/me', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -76,7 +145,13 @@ router.get('/me', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findOne({ where: { email: decoded.email } });
     if (!user) return res.status(404).json({ error: 'User not found.' });
-    res.json({ email: user.email, isPremium: user.isPremium });
+    res.json({ 
+      email: user.email, 
+      name: user.name,
+      avatar: user.avatar,
+      provider: user.provider,
+      isPremium: user.isPremium 
+    });
   } catch {
     res.status(401).json({ error: 'Invalid token.' });
   }

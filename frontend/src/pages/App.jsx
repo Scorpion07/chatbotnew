@@ -50,11 +50,7 @@ export default function App() {
       <header className='bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-200'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center'>
           <div className='flex items-center gap-2 cursor-pointer' onClick={() => setView('home')}>
-            <div className='w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center'>
-              <svg className='w-5 h-5 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' />
-              </svg>
-            </div>
+            <img src='/logos/logo.png' alt='TalkSphere AI' className='w-8 h-8 sm:w-10 sm:h-10' />
             <h1 className='text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent'>TalkSphere AI</h1>
           </div>
           

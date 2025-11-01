@@ -25,7 +25,11 @@ export const Stat = sequelize.define('Stat', {
 export const User = sequelize.define('User', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   email: { type: DataTypes.STRING, unique: true, allowNull: false },
-  password: { type: DataTypes.STRING, allowNull: false },
+  password: { type: DataTypes.STRING, allowNull: true }, // Allow null for Google sign-in users
+  googleId: { type: DataTypes.STRING, unique: true, allowNull: true }, // Google user ID
+  name: { type: DataTypes.STRING, allowNull: true }, // User's name from Google
+  avatar: { type: DataTypes.STRING, allowNull: true }, // Profile picture URL
+  provider: { type: DataTypes.STRING, defaultValue: 'email' }, // 'email' or 'google'
   isPremium: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
