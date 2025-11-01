@@ -2,7 +2,7 @@
 export const config = {
   // Replace with your actual Google OAuth Client ID
   // Get it from: https://console.developers.google.com/apis/credentials
-  GOOGLE_CLIENT_ID: "YOUR_GOOGLE_CLIENT_ID",
+  GOOGLE_CLIENT_ID: "1077821208623-csoqpoks6lv8jjpgq4a19pgjmunvfg5k.apps.googleusercontent.com",
   
   // API base URL
   API_BASE_URL: "http://localhost:5000",

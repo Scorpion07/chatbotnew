@@ -11,7 +11,7 @@ export default function Login({ onLogin, setView }) {
 
   // Initialize Google Sign-In
   useEffect(() => {
-    if (window.google && config.GOOGLE_CLIENT_ID !== "YOUR_GOOGLE_CLIENT_ID") {
+    if (window.google && config.GOOGLE_CLIENT_ID !== "1077821208623-csoqpoks6lv8jjpgq4a19pgjmunvfg5k.apps.googleusercontent.com") {
       window.google.accounts.id.initialize({
         client_id: config.GOOGLE_CLIENT_ID,
         callback: handleGoogleSignIn,
@@ -39,7 +39,7 @@ export default function Login({ onLogin, setView }) {
   };
 
   const handleGoogleButtonClick = () => {
-    if (config.GOOGLE_CLIENT_ID === "YOUR_GOOGLE_CLIENT_ID") {
+    if (config.GOOGLE_CLIENT_ID === "1077821208623-csoqpoks6lv8jjpgq4a19pgjmunvfg5k.apps.googleusercontent.com") {
       setError('Google Sign-In not configured. Please contact administrator.');
       return;
     }
