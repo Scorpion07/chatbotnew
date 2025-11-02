@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { config } from '../config.js';
+import { config, getApiUrl } from '../config.js';
 import axios from 'axios';
 import Home from './Home.jsx';
 import Admin from './Admin.jsx';
@@ -27,11 +27,11 @@ export default function App() {
       return;
     }
     try {
-      const res = await axios.get('http://localhost:5000/api/auth/me', {
+      const res = await axios.get(getApiUrl('/api/auth/me'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAuthed(true);
-      setUser(res.data);
+      setUser(res.data?.user || null);
     } catch {
       setAuthed(false);
       setUser(null);
@@ -44,7 +44,7 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
-    axios.get('/api/bots')
+    axios.get(getApiUrl('/api/bots'))
       .then(r => { if (mounted) setBots(r.data || []); })
       .catch(() => setBots([]));
     return () => { mounted = false; };

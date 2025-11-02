@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import { getApiUrl } from '../config.js';
 import BotGrid from '../components/BotGrid.jsx';
 
 export default function Chat({ setView }) {
@@ -38,9 +39,9 @@ export default function Chat({ setView }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      axios.get('/api/auth/me', {
+      axios.get(getApiUrl('/api/auth/me'), {
         headers: { Authorization: `Bearer ${token}` }
-      }).then(res => setIsPremium(res.data.isPremium)).catch(() => {});
+      }).then(res => setIsPremium(!!res.data?.user?.isPremium)).catch(() => {});
     }
     // Load query count from localStorage
     const savedCount = localStorage.getItem('queryCount');
@@ -141,7 +142,7 @@ export default function Chat({ setView }) {
       if (botType === 'image') {
         // Call backend image endpoint
         const token = localStorage.getItem('token');
-        const res = await axios.post('/api/openai/image', { prompt: userMessage.content }, {
+        const res = await axios.post(getApiUrl('/api/openai/image'), { prompt: userMessage.content }, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         response = {
@@ -162,7 +163,7 @@ export default function Chat({ setView }) {
       } else if (botType === 'audio') {
         // Call backend audio endpoint and play audio
         const token = localStorage.getItem('token');
-        const audioRes = await fetch('/api/openai/audio', {
+        const audioRes = await fetch(getApiUrl('/api/openai/audio'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ text: userMessage.content })
@@ -189,7 +190,7 @@ export default function Chat({ setView }) {
       } else {
         // Call backend chat endpoint
         const token = localStorage.getItem('token');
-        const res = await axios.post('/api/openai/chat', {
+        const res = await axios.post(getApiUrl('/api/openai/chat'), {
           message: userMessage.content,
           botName: selectedModel
         }, {
@@ -288,7 +289,7 @@ export default function Chat({ setView }) {
 
   useEffect(() => {
     let mounted = true;
-    axios.get('/api/bots')
+    axios.get(getApiUrl('/api/bots'))
       .then(r => { if (mounted) setBots(r.data); })
       .catch((err) => {
         console.error('Error fetching bots:', err);
@@ -326,7 +327,7 @@ export default function Chat({ setView }) {
       const formData = new FormData();
       formData.append('audio', blob, 'voice.webm');
       formData.append('model', selectedModel);
-      const res = await axios.post('/api/openai/transcribe', formData, {
+      const res = await axios.post(getApiUrl('/api/openai/transcribe'), formData, {
         headers: { 'Content-Type': 'multipart/form-data', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
       });
       setMessages(prev => [...prev, {

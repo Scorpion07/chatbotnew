@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { getApiUrl } from '../config.js';
 
 export default function Settings({ user: initialUser, onLogout, onUpgrade }) {
   const [user, setUser] = useState(initialUser);
@@ -12,12 +13,12 @@ export default function Settings({ user: initialUser, onLogout, onUpgrade }) {
     if (!token) return;
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/auth/me', {
+      const res = await axios.get(getApiUrl('/api/auth/me'), {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setUser(res.data);
+      setUser(res.data?.user || null);
       // Also fetch usage
-      const usageRes = await axios.get('http://localhost:5000/api/usage', {
+      const usageRes = await axios.get(getApiUrl('/api/usage'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsage(usageRes.data.usage || []);
@@ -34,7 +35,7 @@ export default function Settings({ user: initialUser, onLogout, onUpgrade }) {
       // Load usage on mount
       const token = localStorage.getItem('token');
       if (!token) return;
-      axios.get('http://localhost:5000/api/usage', {
+      axios.get(getApiUrl('/api/usage'), {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setUsage(res.data.usage || [])).catch(() => {});
     }
