@@ -1,9 +1,15 @@
 // Configuration file for frontend
 // Use public asset paths directly (frontend/public/* is served at "/")
+// Resolve API base URL at runtime for prod if env is not set
+const runtimeBaseUrl = (typeof window !== 'undefined' && window.location && window.location.origin)
+  ? window.location.origin
+  : undefined;
+
 export const config = {
   // API Configuration
   api: {
-    baseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
+    // Prefer explicit env; otherwise in production use same-origin; fallback to localhost for dev
+    baseUrl: import.meta.env.VITE_API_BASE_URL || runtimeBaseUrl || "http://localhost:5000",
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 10000,
     endpoints: {
       auth: "/api/auth",
