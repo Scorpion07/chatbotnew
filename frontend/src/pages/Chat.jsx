@@ -4,57 +4,13 @@ import { getApiUrl } from '../config.js';
 import BotGrid from '../components/BotGrid.jsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import remarkEmoji from 'remark-emoji';
-import rehypeRaw from 'rehype-raw';
-import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize from 'rehype-sanitize';
-import 'highlight.js/styles/github-dark.css';
-import { defaultSchema } from 'hast-util-sanitize';
 
 export default function Chat({ setView }) {
-  // Allow highlight.js classes through sanitizer for code blocks
-  const markdownSanitizeSchema = {
-    ...defaultSchema,
-    attributes: {
-      ...defaultSchema.attributes,
-      code: [...(defaultSchema.attributes?.code || []), ['className']],
-      pre: [...(defaultSchema.attributes?.pre || []), ['className']],
-      span: [...(defaultSchema.attributes?.span || []), ['className']]
-    }
-  };
-  // Less predictable, emoji-friendly greeting similar to modern assistants
-  const getRandomGreeting = () => {
-    const hours = new Date().getHours();
-    const timeOfDay = hours < 12 ? 'morning' : hours < 18 ? 'afternoon' : 'evening';
-    const openers = [
-      `Hey there 👋`,
-      `Hi!`,
-      `Hello!`,
-      `Welcome back ✨`,
-      `Good ${timeOfDay}!`
-    ];
-    const bodies = [
-      `What can I help you with today?`,
-      `How can I assist you?`,
-      `Ask me anything — I\'m ready.`,
-      `Need ideas, answers, or code? I\'m on it 💡`,
-      `Tell me what you\'re working on.`
-    ];
-    const extras = [
-      ``,
-      `You can paste text, drop an image, or just type.`,
-      `Tip: use Shift+Enter for a new line.`,
-      `I support markdown, code blocks, and emojis 😄`,
-      `Switch models anytime from the dropdown.`
-    ];
-    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-    return `${pick(openers)} ${pick(bodies)} ${pick(extras)}`.trim();
-  };
-
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: getRandomGreeting(),
+      content: 'Hello! I\'m your AI assistant. How can I help you today?',
       model: 'GPT-4'
     }
   ]);
@@ -337,13 +293,13 @@ export default function Chat({ setView }) {
       const entry = { id: conv.id, title: conv.title || `Chat ${conv.id}`, date: new Date(conv.updatedAt || conv.createdAt).toLocaleDateString() };
       setConversations(prev => [entry, ...prev]);
       setActiveConversation(conv.id);
-      setMessages([{ role: 'assistant', content: getRandomGreeting(), model: modelLabel }]);
+      setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
     } catch (e) {
       // fallback local new chat (non-persistent)
       const tempId = Date.now();
       setConversations(prev => [{ id: tempId, title: 'Conversation', date: new Date().toLocaleDateString() }, ...prev]);
       setActiveConversation(tempId);
-      setMessages([{ role: 'assistant', content: getRandomGreeting(), model: modelLabel }]);
+      setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
     }
   };
 
@@ -384,7 +340,7 @@ export default function Chat({ setView }) {
         type: m.type || 'text'
       }));
       if (msgs.length === 0) {
-        setMessages([{ role: 'assistant', content: getRandomGreeting(), model: modelLabel }]);
+        setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
       } else {
         setMessages(msgs);
       }
@@ -694,9 +650,20 @@ export default function Chat({ setView }) {
                   ) : (
                     <div className='prose prose-indigo max-w-none text-gray-800'>
                       <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkEmoji]}
-                        rehypePlugins={[rehypeRaw, rehypeHighlight, [rehypeSanitize, markdownSanitizeSchema]]}
-                        linkTarget='_blank'
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeSanitize]}
+                        components={{
+                          code({node, inline, className, children, ...props}) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            return !inline ? (
+                              <pre className='bg-gray-900 text-gray-100 rounded-lg p-3 overflow-auto text-sm'>
+                                <code className={className} {...props}>{children}</code>
+                              </pre>
+                            ) : (
+                              <code className='bg-gray-100 rounded px-1 py-0.5' {...props}>{children}</code>
+                            );
+                          }
+                        }}
                       >
                         {message.content}
                       </ReactMarkdown>
