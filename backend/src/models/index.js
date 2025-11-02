@@ -1,10 +1,15 @@
 import { Sequelize, DataTypes } from "sequelize";
 
+//
+// ------------------------- DATABASE SETUP -------------------------
+//
 export const sequelize = new Sequelize("sqlite:./data/database.sqlite", {
   logging: false,
 });
 
+//
 // ------------------------- MODELS -------------------------
+//
 export const Bot = sequelize.define("Bot", {
   id: { type: DataTypes.INTEGER, primaryKey: true },
   name: DataTypes.STRING,
@@ -27,8 +32,7 @@ export const User = sequelize.define("User", {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   email: { type: DataTypes.STRING, unique: true, allowNull: false },
   password: { type: DataTypes.STRING, allowNull: true },
-  // Note: Do NOT declare unique here for SQLite alter compatibility.
-  // We'll add a unique index for this column after sync.
+  // Note: No 'unique' on googleId for SQLite; we’ll add unique index manually after sync.
   googleId: { type: DataTypes.STRING, allowNull: true },
   name: { type: DataTypes.STRING, allowNull: true },
   avatar: { type: DataTypes.STRING, allowNull: true },
@@ -43,26 +47,53 @@ export const Usage = sequelize.define("Usage", {
   lastUsedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 });
 
+//
 // ------------------------- RELATIONSHIPS -------------------------
+//
 User.hasMany(Usage, { foreignKey: "userId", onDelete: "CASCADE" });
 Usage.belongsTo(User, { foreignKey: "userId" });
 
-// ------------------------- INIT -------------------------
+//
+// ------------------------- INIT FUNCTION -------------------------
+//
 export async function initDb() {
-  console.log("🗄️  [DB] Syncing models...");
-  await sequelize.sync({ alter: true });
+  console.log("🗄️  Initializing database...");
 
-  // Ensure unique index on googleId without triggering SQLite 'add UNIQUE column' limitation
   try {
+    console.log("🗄️  [DB] Syncing models...");
+    await sequelize.sync({ alter: true });
+
+    // Add unique index safely (SQLite allows NULL duplicates)
     const table = User.getTableName();
-    const tableName = typeof table === 'string' ? table : table.tableName;
-    // SQLite allows multiple NULLs in UNIQUE index; fine for optional googleId
-    await sequelize.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_googleId ON ${tableName} (googleId);`);
-  } catch (e) {
-    console.warn("⚠️  [DB] Could not ensure unique index on User.googleId:", e.message);
+    const tableName = typeof table === "string" ? table : table.tableName;
+
+    await sequelize.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_googleId 
+      ON ${tableName} (googleId);
+    `);
+
+    console.log("✅ [DB] Synced successfully");
+  } catch (error) {
+    console.error("❌ Database initialization failed:", error.message);
+
+    if (error.message.includes("Validation error")) {
+      console.error("⚠️ Likely cause: duplicate or invalid data in database.sqlite");
+      console.error("👉 Tip: Delete 'backend/data/database.sqlite' and restart the backend.");
+    }
+
+    // Force process exit so PM2 restarts cleanly instead of infinite retry loop
+    process.exit(1);
   }
-  console.log("✅ [DB] Synced successfully");
 }
 
+//
 // ------------------------- EXPORT DEFAULT -------------------------
-export default { sequelize, Bot, Stat, User, Usage, initDb };
+//
+export default {
+  sequelize,
+  Bot,
+  Stat,
+  User,
+  Usage,
+  initDb,
+};
