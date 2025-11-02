@@ -4,13 +4,57 @@ import { getApiUrl } from '../config.js';
 import BotGrid from '../components/BotGrid.jsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkEmoji from 'remark-emoji';
+import rehypeRaw from 'rehype-raw';
+import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize from 'rehype-sanitize';
+import 'highlight.js/styles/github-dark.css';
+import { defaultSchema } from 'hast-util-sanitize';
 
 export default function Chat({ setView }) {
+  // Allow highlight.js classes through sanitizer for code blocks
+  const markdownSanitizeSchema = {
+    ...defaultSchema,
+    attributes: {
+      ...defaultSchema.attributes,
+      code: [...(defaultSchema.attributes?.code || []), ['className']],
+      pre: [...(defaultSchema.attributes?.pre || []), ['className']],
+      span: [...(defaultSchema.attributes?.span || []), ['className']]
+    }
+  };
+  // Less predictable, emoji-friendly greeting similar to modern assistants
+  const getRandomGreeting = () => {
+    const hours = new Date().getHours();
+    const timeOfDay = hours < 12 ? 'morning' : hours < 18 ? 'afternoon' : 'evening';
+    const openers = [
+      `Hey there 👋`,
+      `Hi!`,
+      `Hello!`,
+      `Welcome back ✨`,
+      `Good ${timeOfDay}!`
+    ];
+    const bodies = [
+      `What can I help you with today?`,
+      `How can I assist you?`,
+      `Ask me anything — I\'m ready.`,
+      `Need ideas, answers, or code? I\'m on it 💡`,
+      `Tell me what you\'re working on.`
+    ];
+    const extras = [
+      ``,
+      `You can paste text, drop an image, or just type.`,
+      `Tip: use Shift+Enter for a new line.`,
+      `I support markdown, code blocks, and emojis 😄`,
+      `Switch models anytime from the dropdown.`
+    ];
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    return `${pick(openers)} ${pick(bodies)} ${pick(extras)}`.trim();
+  };
+
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hello! I\'m your AI assistant. How can I help you today?',
+      content: getRandomGreeting(),
       model: 'GPT-4'
     }
   ]);
@@ -44,11 +88,22 @@ export default function Chat({ setView }) {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setIsPremium(!!res.data?.user?.isPremium)).catch(() => {});
     }
-    // Load query count from localStorage
-    const savedCount = localStorage.getItem('queryCount');
-    if (savedCount) {
-      setQueryCount(JSON.parse(savedCount));
-    }
+    // Clear any stale local counts (we now rely on server usage)
+    try { localStorage.removeItem('queryCount'); } catch {}
+  }, []);
+
+  // Load per-bot usage counts for the authenticated user
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    axios.get(getApiUrl('/api/usage'), {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => {
+      const records = res.data?.usage || [];
+      const map = {};
+      records.forEach(u => { map[u.botName] = u.count || 0; });
+      setQueryCount(map);
+    }).catch(() => {});
   }, []);
 
   // Get currently selected bot and display label (prefer official model name)
@@ -77,14 +132,7 @@ export default function Chat({ setView }) {
   const handleSend = async () => {
     if (!input.trim() && !selectedImage && !searchQuery) return;
 
-    // Check query limit for free users
-    if (!isPremium) {
-      const currentCount = queryCount[selectedModel] || 0;
-      if (currentCount >= FREE_USER_LIMIT) {
-        setShowUpgrade(true);
-        return;
-      }
-    }
+    // Do not block on client; rely on server 402 to enforce limits
 
     let userMessage;
     let botType = 'text';
@@ -219,11 +267,9 @@ export default function Chat({ setView }) {
       }
       setMessages(prev => [...prev, response]);
       
-      // Increment query count for free users
+      // Increment local display count for free users (server is source of truth)
       if (!isPremium) {
-        const newCount = { ...queryCount, [selectedModel]: (queryCount[selectedModel] || 0) + 1 };
-        setQueryCount(newCount);
-        localStorage.setItem('queryCount', JSON.stringify(newCount));
+        setQueryCount(prev => ({ ...prev, [selectedModel]: (prev[selectedModel] || 0) + 1 }));
       }
     } catch (err) {
       // If server enforced limit, show upgrade modal
@@ -291,13 +337,13 @@ export default function Chat({ setView }) {
       const entry = { id: conv.id, title: conv.title || `Chat ${conv.id}`, date: new Date(conv.updatedAt || conv.createdAt).toLocaleDateString() };
       setConversations(prev => [entry, ...prev]);
       setActiveConversation(conv.id);
-      setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
+      setMessages([{ role: 'assistant', content: getRandomGreeting(), model: modelLabel }]);
     } catch (e) {
       // fallback local new chat (non-persistent)
       const tempId = Date.now();
       setConversations(prev => [{ id: tempId, title: 'Conversation', date: new Date().toLocaleDateString() }, ...prev]);
       setActiveConversation(tempId);
-      setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
+      setMessages([{ role: 'assistant', content: getRandomGreeting(), model: modelLabel }]);
     }
   };
 
@@ -338,7 +384,7 @@ export default function Chat({ setView }) {
         type: m.type || 'text'
       }));
       if (msgs.length === 0) {
-        setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
+        setMessages([{ role: 'assistant', content: getRandomGreeting(), model: modelLabel }]);
       } else {
         setMessages(msgs);
       }
@@ -648,20 +694,9 @@ export default function Chat({ setView }) {
                   ) : (
                     <div className='prose prose-indigo max-w-none text-gray-800'>
                       <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeSanitize]}
-                        components={{
-                          code({node, inline, className, children, ...props}) {
-                            const match = /language-(\w+)/.exec(className || '');
-                            return !inline ? (
-                              <pre className='bg-gray-900 text-gray-100 rounded-lg p-3 overflow-auto text-sm'>
-                                <code className={className} {...props}>{children}</code>
-                              </pre>
-                            ) : (
-                              <code className='bg-gray-100 rounded px-1 py-0.5' {...props}>{children}</code>
-                            );
-                          }
-                        }}
+                        remarkPlugins={[remarkGfm, remarkEmoji]}
+                        rehypePlugins={[rehypeRaw, rehypeHighlight, [rehypeSanitize, markdownSanitizeSchema]]}
+                        linkTarget='_blank'
                       >
                         {message.content}
                       </ReactMarkdown>
