@@ -1,8 +1,8 @@
 // Configuration file for frontend
 // Import brand assets directly from repository-level logo/ folder so Vite bundles them
-import LogoSmall from "frontend/public/logos/logo.svg";
-import LogoLarge from "/frontend/public/logos/logo-full-transparent.png";
-import Favicon from "frontend/public/logos/favicon.png";
+import LogoSmall from "/logos/logo.svg";
+import LogoLarge from "/logos/logo-full-transparent.png";
+import Favicon from "/logos/favicon.png";
 export const config = {
   // API Configuration
   api: {
