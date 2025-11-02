@@ -2,6 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
+import { authRequired } from "../middleware/auth.js";
 import { User } from "../models/index.js";
 
 const router = express.Router();
@@ -13,7 +14,7 @@ const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : nul
 const TOKEN_EXPIRY = "7d"; // JWT validity
 
 // ---------- METHOD GUARDS (let CORS handle preflight) ----------
-router.all(["/signup", "/login", "/google"], (req, res, next) => {
+router.all(["/signup", "/login", "/google", "/subscribe"], (req, res, next) => {
   if (req.method === "POST" || req.method === "OPTIONS") return next();
   res.set("Allow", "POST, OPTIONS");
   return res.sendStatus(405);
@@ -148,3 +149,18 @@ router.post("/logout", (req, res) => {
 });
 
 export default router;
+
+// ---------- PREMIUM SUBSCRIPTION (placeholder) ----------
+// This endpoint simulates a successful payment by marking the authenticated user as premium.
+// In production, wire this to your payment provider's webhook or checkout success callback.
+router.post("/subscribe", authRequired, async (req, res) => {
+  try {
+    req.user.isPremium = true;
+    await req.user.save();
+    const token = generateToken(req.user);
+    return res.json({ user: sanitizeUser(req.user), token });
+  } catch (err) {
+    console.error("Subscribe error:", err?.message || err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
