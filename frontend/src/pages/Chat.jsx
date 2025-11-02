@@ -39,7 +39,7 @@ export default function Chat({ setView }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      axios.get('/api/auth/me', {
+      axios.get(getApiUrl('/api/auth/me'), {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setIsPremium(res.data.isPremium)).catch(() => {});
     }

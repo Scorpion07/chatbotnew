@@ -115,7 +115,10 @@ echo "============================================"
 echo "✅ DEPLOYMENT COMPLETE!"
 echo "============================================"
 echo ""
-echo "Frontend: http://$(hostname -I | awk '{print $1}')"
+PRIVATE_IP=$(hostname -I | awk '{print $1}')
+PUBLIC_IP=$(curl -s https://ifconfig.me || dig -4 +short myip.opendns.com @resolver1.opendns.com || echo "<public-ip>")
+echo "Private:  http://$PRIVATE_IP"
+echo "Public:   http://$PUBLIC_IP"
 echo "Backend running on port 5000 (proxied via Nginx)"
 echo ""
 echo "Useful commands:"

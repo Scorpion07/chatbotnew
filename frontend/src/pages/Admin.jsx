@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-const API = 'http://localhost:5000';
+import { config, getApiUrl } from '../config.js';
+const API = config.api.baseUrl;
 
 export default function Admin() {
   const [bots, setBots] = useState([]);
@@ -18,22 +19,25 @@ export default function Admin() {
   }, []);
 
   async function load() {
-    const [b, s] = await Promise.all([axios.get(API+'/api/bots'), axios.get(API+'/api/stats')]);
+    const [b, s] = await Promise.all([
+      axios.get(getApiUrl('/api/bots')),
+      axios.get(getApiUrl('/api/stats'))
+    ]);
     setBots(b.data); setStats(s.data);
   }
 
   async function addBot(e){
     e.preventDefault();
-    await axios.post(API+'/api/bots', form);
+    await axios.post(getApiUrl('/api/bots'), form);
     setForm({name:'',provider:''});
   }
 
   async function delBot(id){
-    await axios.delete(API+'/api/bots/'+id);
+    await axios.delete(getApiUrl('/api/bots/'+id));
   }
 
   async function saveStats(){
-    await axios.post(API+'/api/stats', stats);
+    await axios.post(getApiUrl('/api/stats'), stats);
   }
 
   return (
