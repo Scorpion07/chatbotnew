@@ -123,17 +123,20 @@ chatbotapp-clone/
 
 ## 🔧 Configuration
 
-The backend configuration can be modified in `backend/config.json`:
+App configuration (bots and stats) is stored in `backend/data/config.json` and managed by the backend at runtime. A minimal example shape:
+
 ```json
 {
-  "server": {
-    "port": 5000
-  },
-  "database": {
-    "path": "./database.sqlite"
-  }
+  "bots": [
+    { "id": 1, "name": "ChatGPT-4o", "provider": "openai", "model": "gpt-4o", "status": "active" }
+  ],
+  "stats": { "totalChats": 0, "activeBots": 1, "usersOnline": 0 }
 }
 ```
+
+Notes:
+- The file is created automatically if missing.
+- Do not edit `dist/` frontend assets directly; prefer modifying `frontend/src/**` and rebuilding.
 
 ## 📝 API Endpoints
 

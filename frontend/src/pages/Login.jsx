@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import config, { getApiUrl, isFeatureEnabled } from '../config.js';
 
+// Consider Google Client ID valid only if it looks like a real Web Client ID
+const hasValidGoogleClientId = () =>
+  typeof config.auth.googleClientId === 'string' &&
+  config.auth.googleClientId.includes('.apps.googleusercontent.com');
+
 export default function Login({ onLogin, setView }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,7 +16,7 @@ export default function Login({ onLogin, setView }) {
 
   // Initialize Google Sign-In
   useEffect(() => {
-    if (window.google && isFeatureEnabled('googleAuth') && config.auth.googleClientId !== "YOUR_GOOGLE_CLIENT_ID") {
+    if (window.google && isFeatureEnabled('googleAuth') && hasValidGoogleClientId()) {
       window.google.accounts.id.initialize({
         client_id: config.auth.googleClientId,
         callback: handleGoogleSignIn,
@@ -43,9 +48,9 @@ export default function Login({ onLogin, setView }) {
       setError('Google Sign-In is disabled.');
       return;
     }
-    
-    if (config.auth.googleClientId === "YOUR_GOOGLE_CLIENT_ID") {
-      setError('Google Sign-In not configured. Please contact administrator.');
+
+    if (!hasValidGoogleClientId()) {
+      setError('Google Sign-In is not configured correctly.');
       return;
     }
     

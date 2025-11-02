@@ -85,8 +85,12 @@ export function validateConfig() {
   const errors = [];
 
   // Check Google Client ID
-  if (config.features.googleAuth && config.auth.googleClientId === "YOUR_GOOGLE_CLIENT_ID") {
-    warnings.push("Google Sign-In is enabled but CLIENT_ID is not configured");
+  if (config.features.googleAuth) {
+    const id = config.auth.googleClientId || "";
+    const looksValid = typeof id === 'string' && id.includes('.apps.googleusercontent.com');
+    if (!looksValid) {
+      warnings.push("Google Sign-In is enabled but CLIENT_ID appears invalid or is not configured");
+    }
   }
 
   // Check API base URL
