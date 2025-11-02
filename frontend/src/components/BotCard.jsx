@@ -8,8 +8,30 @@ export default function BotCard({ bot, onClick }) {
     >
       {/* Bot Icon and Name */}
       <div className="flex items-center gap-3 p-6 pb-4">
-        <div className={`w-12 h-12 ${bot.color} rounded-xl flex items-center justify-center text-2xl shadow-lg`}>
-          {bot.icon}
+        <div className={`w-12 h-12 ${bot.color} rounded-xl flex items-center justify-center text-2xl shadow-lg overflow-hidden`}>
+          {typeof bot.icon === 'string' && /(\.(png|jpe?g|svg|gif|webp)$|^https?:\/\/|^\/)/i.test(bot.icon)
+            ? (
+                // Image path or URL
+                <img
+                  src={bot.icon}
+                  alt={bot.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to emoji if image fails
+                    if (bot.emoji) {
+                      e.currentTarget.replaceWith(document.createTextNode(bot.emoji));
+                    } else if (bot.fallbackIcon) {
+                      e.currentTarget.replaceWith(document.createTextNode(bot.fallbackIcon));
+                    } else {
+                      e.currentTarget.replaceWith(document.createTextNode('🤖'));
+                    }
+                  }}
+                />
+              )
+            : (
+                // Emoji or text icon
+                <span>{bot.icon || '🤖'}</span>
+              )}
         </div>
         <div>
           <div className="flex items-center gap-2">
