@@ -161,6 +161,31 @@ The app uses Tailwind CSS. You can customize colors in `frontend/tailwind.config
 
 ### Models
 Add or modify AI models in `frontend/src/pages/Chat.jsx`:
+
+## 🔐 Google Sign-In Setup
+
+To enable Google Sign-In:
+
+1) Create a Web OAuth 2.0 Client ID in Google Cloud Console (APIs & Services → Credentials).
+   - Application type: Web application
+   - Authorized JavaScript origins (add as needed):
+     - `http://localhost:5173` (Vite dev)
+     - `https://talk-sphere.com` and `https://www.talk-sphere.com` (production)
+   - You don’t need redirect URIs for the Identity Services “Credential” flow used here.
+
+2) Configure the same Client ID in both apps:
+   - Frontend: set `VITE_GOOGLE_CLIENT_ID` in `frontend/.env.local`
+   - Backend: set `GOOGLE_CLIENT_ID` in `backend/.env`
+
+3) Make sure Google auth is enabled and the script is loaded:
+   - Frontend flag `VITE_ENABLE_GOOGLE_AUTH=true`
+   - `frontend/index.html` includes `<script src="https://accounts.google.com/gsi/client" async defer></script>`
+
+4) Restart both servers and rebuild frontend for production deploys.
+
+Troubleshooting:
+- If you see “Google Sign-In is not configured correctly.”, verify the Client ID ends with `.apps.googleusercontent.com` and matches between frontend and backend.
+- In production, ensure your domain is listed in Authorized JavaScript origins.
 ```javascript
 const models = [
   { name: 'GPT-4', icon: '🤖', color: 'from-green-500 to-emerald-600', description: 'Most capable model' },
