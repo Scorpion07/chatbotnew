@@ -6,7 +6,8 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-const configPath = path.join(process.cwd(), 'config.json');
+// Store bots/stats config under backend/data/config.json
+const configPath = path.join(process.cwd(), 'data', 'config.json');
 
 // Centralized configuration with secrets management
 export const config = {
@@ -134,6 +135,7 @@ export async function readConfig() {
 }
 
 export async function writeConfig(cfg) {
+  await fs.ensureDir(path.dirname(configPath));
   await fs.writeFile(configPath, JSON.stringify(cfg, null, 2));
   return cfg;
 }
