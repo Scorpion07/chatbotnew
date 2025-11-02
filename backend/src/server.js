@@ -16,25 +16,35 @@ dotenv.config({ path: '.env' });
 const app = express();
 const server = http.createServer(app);
 
+// ---------- Allowed Origins ----------
+const allowedOrigins = [
+  'https://talk-sphere.com',
+  'https://www.talk-sphere.com',
+  'http://localhost:5173', // for local vite dev
+  'http://localhost:3000', // fallback dev port
+];
+
 // ---------- Socket.IO setup ----------
 const io = new Server(server, {
   cors: {
-    origin: [
-      'https://talk-sphere.com',
-      'http://localhost:3000'
-    ],
+    origin: allowedOrigins,
     credentials: true,
   },
 });
 
 // ---------- Middleware ----------
 app.use(express.json({ limit: '10mb' }));
+
 app.use(
   cors({
-    origin: [
-      'https://talk-sphere.com',
-      'http://localhost:3000',
-    ],
+    origin: (origin, callback) => {
+      // allow requests from allowed origins or from server-side (no origin)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
@@ -77,7 +87,7 @@ const PORT = process.env.PORT || 5000;
 let serverStarted = false;
 
 const startServer = async (retries = 5) => {
-  if (serverStarted) return; // Prevent multiple starts
+  if (serverStarted) return;
   serverStarted = true;
 
   while (retries) {
