@@ -101,7 +101,7 @@ export default function App() {
                             : <span className='text-lg'>{bot.icon || '🤖'}</span>}
                         </div>
                         <div className='flex-1 min-w-0'>
-                          <div className='font-medium text-gray-900 truncate'>{bot.name}</div>
+                          <div className='font-medium text-gray-900 truncate'>{bot.model || bot.name}</div>
                           <div className='text-xs text-gray-500 truncate'>{bot.tagline || bot.description}</div>
                         </div>
                         <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200'>{bot.provider}</span>

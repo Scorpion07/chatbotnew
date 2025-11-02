@@ -3,7 +3,8 @@ import OpenAI from "openai";
 import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
-import { User, Usage } from "../models/index.js";
+import { User, Usage, Conversation, Message } from "../models/index.js";
+import { appConfig } from "../services/configService.js";
 import { authRequired, premiumRequired } from "../middleware/auth.js";
 
 dotenv.config();
@@ -29,7 +30,7 @@ const openai = new OpenAI({
 // 🧠 TEXT CHAT ENDPOINT (with auth and free-tier limit)
 // =====================================================
 router.post("/chat", authRequired, async (req, res) => {
-  const { message, botName } = req.body;
+  const { message, botName, conversationId } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: "Message is required." });
@@ -38,9 +39,18 @@ router.post("/chat", authRequired, async (req, res) => {
   try {
   const user = req.user;
 
-    // Enforce free-tier limit: 5 queries per bot for non-premium users
+    // Ensure conversation exists or create a new one if not provided
+    let conv = null;
+    if (conversationId) {
+      conv = await Conversation.findOne({ where: { id: conversationId, userId: user.id } });
+      if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+    } else {
+      conv = await Conversation.create({ userId: user.id, botName: botName || 'default', title: null });
+    }
+
+    // Enforce free-tier limit per user per bot for non-premium users
     if (!user.isPremium) {
-      const FREE_LIMIT = 5;
+      const FREE_LIMIT = (appConfig?.rateLimit?.freeUserLimit) || 5;
       const [usage] = await Usage.findOrCreate({
         where: { userId: user.id, botName: botName || 'default' },
         defaults: { count: 0 }
@@ -48,6 +58,22 @@ router.post("/chat", authRequired, async (req, res) => {
       if (usage.count >= FREE_LIMIT) {
         return res.status(402).json({ error: `Free limit reached for ${botName || 'this bot'}.` });
       }
+    }
+
+    // Persist user message
+    const userMsg = await Message.create({
+      conversationId: conv.id,
+      role: 'user',
+      content: message,
+      model: null,
+      type: 'text',
+      botName: botName || 'default'
+    });
+
+    // Auto-title conversation on first user message
+    if (!conv.title) {
+      const title = String(message).trim().slice(0, 60);
+      await conv.update({ title: title || `Chat ${conv.id}`, botName: botName || conv.botName });
     }
 
     const response = await openai.chat.completions.create({
@@ -64,7 +90,21 @@ router.post("/chat", authRequired, async (req, res) => {
       await Usage.update({ lastUsedAt: new Date() }, { where: { userId: user.id, botName: botName || 'default' } });
     }
 
-    res.json({ response: response.choices[0].message.content });
+    const assistantContent = response.choices[0].message.content;
+    // Persist assistant message
+    await Message.create({
+      conversationId: conv.id,
+      role: 'assistant',
+      content: assistantContent,
+      model: 'gpt-4o-mini',
+      type: 'text',
+      botName: botName || 'default'
+    });
+
+    // Touch conversation updatedAt
+    await conv.update({ updatedAt: new Date() });
+
+    res.json({ response: assistantContent, conversationId: conv.id });
   } catch (err) {
     console.error("❌ Chat error:", err);
     res.status(500).json({ error: "Something went wrong while processing chat." });

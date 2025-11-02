@@ -8,6 +8,7 @@ import statsRouter from './routes/stats.js';
 import openaiRouter from './routes/openai.js';
 import authRouter from './routes/auth.js';
 import usageRouter from './routes/usage.js';
+import conversationsRouter from './routes/conversations.js';
 import { initDb, sequelize } from './models/index.js';
 
 // ---------- Load environment variables ----------
@@ -63,6 +64,7 @@ app.use('/api/stats', statsRouter);
 app.use('/api/openai', openaiRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/usage', usageRouter);
+app.use('/api/conversations', conversationsRouter);
 
 // ---------- Health checks ----------
 app.get('/', (req, res) => {

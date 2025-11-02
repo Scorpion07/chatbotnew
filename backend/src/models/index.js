@@ -47,11 +47,33 @@ export const Usage = sequelize.define("Usage", {
   lastUsedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 });
 
+// Conversation and Message models for persistent chat history
+export const Conversation = sequelize.define("Conversation", {
+  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+  title: { type: DataTypes.STRING, allowNull: true },
+  botName: { type: DataTypes.STRING, allowNull: true },
+});
+
+export const Message = sequelize.define("Message", {
+  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+  role: { type: DataTypes.STRING, allowNull: false }, // 'user' | 'assistant'
+  content: { type: DataTypes.TEXT, allowNull: false },
+  model: { type: DataTypes.STRING, allowNull: true },
+  type: { type: DataTypes.STRING, allowNull: true }, // 'text' | 'image' | 'audio' | 'search'
+  botName: { type: DataTypes.STRING, allowNull: true },
+});
+
 //
 // ------------------------- RELATIONSHIPS -------------------------
 //
 User.hasMany(Usage, { foreignKey: "userId", onDelete: "CASCADE" });
 Usage.belongsTo(User, { foreignKey: "userId" });
+
+// Conversations relationships
+User.hasMany(Conversation, { foreignKey: "userId", onDelete: "CASCADE" });
+Conversation.belongsTo(User, { foreignKey: "userId" });
+Conversation.hasMany(Message, { foreignKey: "conversationId", onDelete: "CASCADE" });
+Message.belongsTo(Conversation, { foreignKey: "conversationId" });
 
 //
 // ------------------------- INIT FUNCTION -------------------------
@@ -108,5 +130,7 @@ export default {
   Stat,
   User,
   Usage,
+  Conversation,
+  Message,
   initDb,
 };

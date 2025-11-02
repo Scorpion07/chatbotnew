@@ -18,10 +18,8 @@ export default function Chat({ setView }) {
   const [bots, setBots] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showBotsPanel, setShowBotsPanel] = useState(false);
-  const [conversations, setConversations] = useState([
-    { id: 1, title: 'New Conversation', date: 'Today' }
-  ]);
-  const [activeConversation, setActiveConversation] = useState(1);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversation, setActiveConversation] = useState(null);
   const [showSidebar, setShowSidebar] = useState(true);
   // Track hovered bot for popup
   const [hoveredBot, setHoveredBot] = useState(null);
@@ -50,8 +48,9 @@ export default function Chat({ setView }) {
     }
   }, []);
 
-  // Get currently selected bot
+  // Get currently selected bot and display label (prefer official model name)
   const selectedBot = bots.find(b => b.name === selectedModel);
+  const modelLabel = selectedBot?.model || selectedModel;
 
   // Handle image upload for image processing bots
   const handleImageUpload = (e) => {
@@ -117,7 +116,7 @@ export default function Chat({ setView }) {
       userMessage = {
         role: 'user',
         content: input,
-        model: selectedModel,
+        model: modelLabel,
         type: 'audio'
       };
       botType = 'audio';
@@ -125,7 +124,7 @@ export default function Chat({ setView }) {
       userMessage = {
         role: 'user',
         content: input,
-        model: selectedModel,
+        model: modelLabel,
         type: 'text'
       };
       botType = 'text';
@@ -148,7 +147,7 @@ export default function Chat({ setView }) {
         response = {
           role: 'assistant',
           content: res.data.url ? `![Generated Image](${res.data.url})` : 'Image generation failed.',
-          model: selectedModel,
+          model: modelLabel,
           type: 'image'
         };
       } else if (botType === 'search') {
@@ -156,7 +155,7 @@ export default function Chat({ setView }) {
         response = {
           role: 'assistant',
           content: 'Search API integration coming soon.',
-          model: selectedModel,
+          model: modelLabel,
           type: 'search',
           results: []
         };
@@ -174,7 +173,7 @@ export default function Chat({ setView }) {
           response = {
             role: 'assistant',
             content: '[Audio generated]',
-            model: selectedModel,
+            model: modelLabel,
             type: 'audio',
             audioUrl
           };
@@ -183,23 +182,35 @@ export default function Chat({ setView }) {
           response = {
             role: 'assistant',
             content: 'Error: Unable to generate audio.' + (errorText ? ` (${errorText})` : ''),
-            model: selectedModel,
+            model: modelLabel,
             type: 'audio'
           };
         }
       } else {
         // Call backend chat endpoint
         const token = localStorage.getItem('token');
+        // Ensure we have a conversation id
+        let convId = activeConversation;
+        if (!convId) {
+          try {
+            const created = await axios.post(getApiUrl('/api/conversations'), { botName: selectedModel }, { headers: { Authorization: `Bearer ${token}` } });
+            convId = created.data.id;
+            const entry = { id: convId, title: created.data.title || `Chat ${convId}`, date: new Date(created.data.updatedAt || created.data.createdAt).toLocaleDateString() };
+            setConversations(prev => [entry, ...prev]);
+            setActiveConversation(convId);
+          } catch {}
+        }
         const res = await axios.post(getApiUrl('/api/openai/chat'), {
           message: userMessage.content,
-          botName: selectedModel
+          botName: selectedModel,
+          conversationId: convId
         }, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         response = {
           role: 'assistant',
           content: res.data.response,
-          model: selectedModel,
+          model: modelLabel,
           type: 'text'
         };
       }
@@ -222,7 +233,7 @@ export default function Chat({ setView }) {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'Error: Unable to get response from API.',
-        model: selectedModel,
+        model: modelLabel,
         type: botType
       }]);
     }
@@ -233,7 +244,7 @@ export default function Chat({ setView }) {
     <div className='fixed inset-0 bg-black/40 flex items-center justify-center z-50'>
       <div className='bg-white rounded-2xl p-6 w-[420px] shadow-2xl border border-gray-200'>
         <h3 className='text-lg font-semibold mb-2'>Upgrade to Premium</h3>
-        <p className='text-sm text-gray-600 mb-4'>You've reached your free limit of {FREE_USER_LIMIT} queries for {selectedModel}. Upgrade to unlock unlimited text and premium features like Image and Audio generation.</p>
+  <p className='text-sm text-gray-600 mb-4'>You've reached your free limit of {FREE_USER_LIMIT} queries for {modelLabel}. Upgrade to unlock unlimited text and premium features like Image and Audio generation.</p>
         <div className='flex justify-end gap-2'>
           <button className='px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50' onClick={() => setShowUpgrade(false)}>Later</button>
           <button className='px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700' onClick={() => { setShowUpgrade(false); setView?.('payment'); }}>Upgrade</button>
@@ -249,7 +260,11 @@ export default function Chat({ setView }) {
     { name: 'Gemini', icon: '✨', color: 'from-blue-500 to-indigo-600', description: 'Google\'s latest' },
     { name: 'Llama', icon: '🦙', color: 'from-purple-500 to-pink-600', description: 'Open source' }
   ];
-  const selectedModelData = models.find(m => m.name === selectedModel);
+  // Prefer bot-provided icon/color; fallback to defaults map above
+  const extractedGradient = selectedBot?.color ? (selectedBot.color.match(/from-[^\s]+\s+to-[^\s]+/)?.[0] || '') : '';
+  const selectedModelData = selectedBot
+    ? { icon: selectedBot.icon || '🤖', color: extractedGradient || 'from-indigo-500 to-purple-600' }
+    : models.find(m => m.name === selectedModel);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -262,25 +277,71 @@ export default function Chat({ setView }) {
     }
   };
 
-  const newConversation = () => {
-    const newId = conversations.length + 1;
-    setConversations([
-      { id: newId, title: `Conversation ${newId}`, date: 'Today' },
-      ...conversations
-    ]);
-    setActiveConversation(newId);
-    setMessages([
-      {
-        role: 'assistant',
-        content: 'Hello! I\'m your AI assistant. How can I help you today?',
-        model: selectedModel
-      }
-    ]);
+  const newConversation = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) { setView?.('login'); return; }
+    try {
+      const res = await axios.post(getApiUrl('/api/conversations'), { botName: selectedModel }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const conv = res.data;
+      const entry = { id: conv.id, title: conv.title || `Chat ${conv.id}`, date: new Date(conv.updatedAt || conv.createdAt).toLocaleDateString() };
+      setConversations(prev => [entry, ...prev]);
+      setActiveConversation(conv.id);
+      setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
+    } catch (e) {
+      // fallback local new chat (non-persistent)
+      const tempId = Date.now();
+      setConversations(prev => [{ id: tempId, title: 'Conversation', date: new Date().toLocaleDateString() }, ...prev]);
+      setActiveConversation(tempId);
+      setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load conversations on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    axios.get(getApiUrl('/api/conversations'), {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => {
+      const list = (res.data || []).map(c => ({
+        id: c.id,
+        title: c.title || `Chat ${c.id}`,
+        date: new Date(c.updatedAt || c.createdAt).toLocaleDateString()
+      }));
+      setConversations(list);
+      if (list.length && !activeConversation) setActiveConversation(list[0].id);
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load messages when active conversation changes
+  useEffect(() => {
+    if (!activeConversation) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    axios.get(getApiUrl(`/api/conversations/${activeConversation}`), {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => {
+      const msgs = (res.data?.messages || []).map(m => ({
+        role: m.role,
+        content: m.content,
+        model: m.model || modelLabel,
+        type: m.type || 'text'
+      }));
+      if (msgs.length === 0) {
+        setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
+      } else {
+        setMessages(msgs);
+      }
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation]);
 
   // Persist selected bot across pages
   useEffect(() => {
@@ -385,6 +446,26 @@ export default function Chat({ setView }) {
                   <div className='text-sm font-medium text-gray-900 truncate'>{conv.title}</div>
                   <div className='text-xs text-gray-500'>{conv.date}</div>
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const token = localStorage.getItem('token');
+                    if (!token) return;
+                    axios.delete(getApiUrl(`/api/conversations/${conv.id}`), { headers: { Authorization: `Bearer ${token}` } })
+                      .then(() => {
+                        setConversations(prev => prev.filter(c => c.id !== conv.id));
+                        if (activeConversation === conv.id) {
+                          const next = conversations.find(c => c.id !== conv.id);
+                          setActiveConversation(next ? next.id : null);
+                          setMessages([{ role: 'assistant', content: "Hello! I'm your AI assistant. How can I help you today?", model: modelLabel }]);
+                        }
+                      }).catch(() => {});
+                  }}
+                  className='px-2 py-1 text-xs text-gray-500 hover:text-red-600'
+                  title='Delete conversation'
+                >
+                  ✕
+                </button>
               </div>
             </div>
           ))}
@@ -410,7 +491,7 @@ export default function Chat({ setView }) {
               <div>
                 <h2 className='text-lg font-semibold text-gray-900'>Chat with AI</h2>
                 <p className='text-sm text-gray-500'>
-                  Powered by {selectedModel}
+                  Powered by {modelLabel}
                   {!isPremium && ` • ${queryCount[selectedModel] || 0}/${FREE_USER_LIMIT} free queries used`}
                 </p>
               </div>
@@ -434,7 +515,7 @@ export default function Chat({ setView }) {
                     onMouseEnter={() => setHoveredBot(bot)}
                     onMouseLeave={() => setHoveredBot(null)}
                   >
-                    {bot.icon} {bot.name}
+                    {bot.icon} {bot.model || bot.name}
                   </option>
                 ))}
               </select>
@@ -458,7 +539,7 @@ export default function Chat({ setView }) {
                 >
                   <div className='flex items-center gap-2 mb-2'>
                     <span className='text-xl'>{hoveredBot.icon}</span>
-                    <span className='font-semibold text-gray-900'>{hoveredBot.name}</span>
+                    <span className='font-semibold text-gray-900'>{hoveredBot.model || hoveredBot.name}</span>
                   </div>
                   <div className='text-sm text-gray-700 mb-1'>{hoveredBot.tagline}</div>
                   <div className='text-xs text-gray-500'>{hoveredBot.description}</div>
