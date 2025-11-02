@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { getApiUrl } from '../config.js';
 import BotGrid from '../components/BotGrid.jsx';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
 
 export default function Chat({ setView }) {
   const [messages, setMessages] = useState([
@@ -643,7 +646,26 @@ export default function Chat({ setView }) {
                       )}
                     </div>
                   ) : (
-                    <p className='whitespace-pre-wrap leading-relaxed'>{message.content}</p>
+                    <div className='prose prose-indigo max-w-none text-gray-800'>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeSanitize]}
+                        components={{
+                          code({node, inline, className, children, ...props}) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            return !inline ? (
+                              <pre className='bg-gray-900 text-gray-100 rounded-lg p-3 overflow-auto text-sm'>
+                                <code className={className} {...props}>{children}</code>
+                              </pre>
+                            ) : (
+                              <code className='bg-gray-100 rounded px-1 py-0.5' {...props}>{children}</code>
+                            );
+                          }
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                   )}
                 </div>
                 <div className={`text-xs text-gray-500 mt-1 px-2 ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
