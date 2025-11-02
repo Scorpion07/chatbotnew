@@ -22,6 +22,8 @@ const allowedOrigins = [
   'https://www.talk-sphere.com',
   'http://localhost:5173', // for local vite dev
   'http://localhost:3000', // fallback dev port
+  'http://localhost:4173', // vite preview
+  'http://127.0.0.1:4173', // vite preview (explicit localhost)
 ];
 
 // ---------- Socket.IO setup ----------
