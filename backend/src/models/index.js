@@ -27,7 +27,9 @@ export const User = sequelize.define("User", {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   email: { type: DataTypes.STRING, unique: true, allowNull: false },
   password: { type: DataTypes.STRING, allowNull: true },
-  googleId: { type: DataTypes.STRING, unique: true, allowNull: true },
+  // Note: Do NOT declare unique here for SQLite alter compatibility.
+  // We'll add a unique index for this column after sync.
+  googleId: { type: DataTypes.STRING, allowNull: true },
   name: { type: DataTypes.STRING, allowNull: true },
   avatar: { type: DataTypes.STRING, allowNull: true },
   provider: { type: DataTypes.STRING, defaultValue: "email" },
@@ -49,6 +51,16 @@ Usage.belongsTo(User, { foreignKey: "userId" });
 export async function initDb() {
   console.log("🗄️  [DB] Syncing models...");
   await sequelize.sync({ alter: true });
+
+  // Ensure unique index on googleId without triggering SQLite 'add UNIQUE column' limitation
+  try {
+    const table = User.getTableName();
+    const tableName = typeof table === 'string' ? table : table.tableName;
+    // SQLite allows multiple NULLs in UNIQUE index; fine for optional googleId
+    await sequelize.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_googleId ON ${tableName} (googleId);`);
+  } catch (e) {
+    console.warn("⚠️  [DB] Could not ensure unique index on User.googleId:", e.message);
+  }
   console.log("✅ [DB] Synced successfully");
 }
 
