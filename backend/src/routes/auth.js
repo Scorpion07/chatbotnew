@@ -150,10 +150,17 @@ router.post("/logout", (req, res) => {
 
 export default router;
 
-// ---------- PREMIUM TOGGLE (TEMP: used by placeholder payment page) ----------
-// Marks the authenticated user as premium. In production, do this from a payment webhook.
+// ---------- PREMIUM TOGGLE (WEBHOOK/ADMIN ONLY IN PRODUCTION) ----------
+// In production: require X-Admin-Secret header to prevent abuse.
+// In development: allow direct toggle for testing.
 router.post('/subscribe', authRequired, async (req, res) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      const secret = req.headers['x-admin-secret'];
+      if (!secret || secret !== process.env.ADMIN_API_SECRET) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+    }
     req.user.isPremium = true;
     await req.user.save();
     return res.json({ ok: true, user: sanitizeUser(req.user) });
@@ -165,6 +172,12 @@ router.post('/subscribe', authRequired, async (req, res) => {
 
 router.post('/unsubscribe', authRequired, async (req, res) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      const secret = req.headers['x-admin-secret'];
+      if (!secret || secret !== process.env.ADMIN_API_SECRET) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+    }
     req.user.isPremium = false;
     await req.user.save();
     return res.json({ ok: true, user: sanitizeUser(req.user) });

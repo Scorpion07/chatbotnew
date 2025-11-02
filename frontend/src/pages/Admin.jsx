@@ -8,6 +8,8 @@ export default function Admin() {
   const [bots, setBots] = useState([]);
   const [stats, setStats] = useState({ totalChats:0, activeBots:0, usersOnline:0 });
   const [form, setForm] = useState({ name:'', provider:'' });
+  const [userEmail, setUserEmail] = useState('');
+  const [userPremium, setUserPremium] = useState(true);
 
   useEffect(() => {
     load();
@@ -37,6 +39,21 @@ export default function Admin() {
 
   async function saveStats(){
     await axios.post(getApiUrl('/api/stats'), stats);
+  }
+
+  async function setPremium(e){
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    if (!token) return alert('Login required');
+    try {
+      await axios.post(getApiUrl('/api/admin/users/premium'), { email: userEmail, isPremium: !!userPremium }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Updated');
+      setUserEmail('');
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed');
+    }
   }
 
   return (
@@ -75,6 +92,16 @@ export default function Admin() {
             <input key={k} type='number' value={stats[k]} onChange={e=>setStats({...stats,[k]:parseInt(e.target.value||0)})} className='w-full border p-2 mb-2 rounded' placeholder={k}/>
           ))}
           <button onClick={saveStats} className='bg-indigo-600 text-white px-4 py-2 rounded-md mt-2'>Save Stats</button>
+
+          <h3 className='text-lg font-semibold mt-8 mb-3'>User Premium Control</h3>
+          <form onSubmit={setPremium} className='bg-white p-4 rounded-md shadow'>
+            <input type='email' required placeholder='user@example.com' value={userEmail} onChange={e=>setUserEmail(e.target.value)} className='w-full border p-2 mb-3 rounded'/>
+            <label className='flex items-center gap-2 mb-3'>
+              <input type='checkbox' checked={userPremium} onChange={e=>setUserPremium(e.target.checked)} />
+              <span>Set as Premium</span>
+            </label>
+            <button className='bg-green-600 text-white px-4 py-2 rounded-md'>Update</button>
+          </form>
         </div>
       </div>
     </div>

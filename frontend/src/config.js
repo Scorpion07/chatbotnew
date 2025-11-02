@@ -47,7 +47,8 @@ export const config = {
     voiceInput: import.meta.env.VITE_ENABLE_VOICE_INPUT !== "false",
     imageUpload: import.meta.env.VITE_ENABLE_IMAGE_UPLOAD !== "false",
     premium: import.meta.env.VITE_ENABLE_PREMIUM !== "false",
-    analytics: import.meta.env.VITE_ENABLE_ANALYTICS === "true"
+    analytics: import.meta.env.VITE_ENABLE_ANALYTICS === "true",
+    devSubscribe: import.meta.env.VITE_ENABLE_DEV_SUBSCRIBE === "true"
   },
 
   // UI Configuration

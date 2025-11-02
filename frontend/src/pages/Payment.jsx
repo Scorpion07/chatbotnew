@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { getApiUrl } from '../config.js';
+import { getApiUrl, isFeatureEnabled } from '../config.js';
 
 export default function Payment({ onComplete }) {
   const [loading, setLoading] = useState(false);
@@ -10,6 +10,12 @@ export default function Payment({ onComplete }) {
     setLoading(true);
     setMessage('Redirecting to payment gateway...');
     try {
+      // In production builds, block direct subscribe unless explicitly enabled via flag
+      if (!isFeatureEnabled('devSubscribe')) {
+        setMessage('Payment gateway is not configured for direct upgrades. Please contact support or an admin.');
+        setLoading(false);
+        return;
+      }
       // TODO: Integrate real payment gateway (Stripe, Razorpay, etc.)
       // Example flow:
       // 1. Create checkout session: const session = await axios.post('/api/payment/create-session', { plan: 'premium' });

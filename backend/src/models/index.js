@@ -1,4 +1,5 @@
 import { Sequelize, DataTypes } from "sequelize";
+import bcrypt from "bcryptjs";
 
 //
 // ------------------------- DATABASE SETUP -------------------------
@@ -38,6 +39,7 @@ export const User = sequelize.define("User", {
   avatar: { type: DataTypes.STRING, allowNull: true },
   provider: { type: DataTypes.STRING, defaultValue: "email" },
   isPremium: { type: DataTypes.BOOLEAN, defaultValue: false },
+  isAdmin: { type: DataTypes.BOOLEAN, defaultValue: false },
 });
 
 export const Usage = sequelize.define("Usage", {
@@ -108,6 +110,27 @@ export async function initDb() {
     }
 
     console.log("✅ [DB] Synced successfully");
+    // Seed persistent admin user
+    try {
+      const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'saxenadevansh703@gmail.com';
+      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'qwerty@123';
+      if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+        let admin = await User.findOne({ where: { email: ADMIN_EMAIL } });
+        const hashed = await bcrypt.hash(ADMIN_PASSWORD, 8);
+        if (!admin) {
+          admin = await User.create({ email: ADMIN_EMAIL, password: hashed, provider: 'email', isAdmin: true });
+        } else {
+          // Ensure admin flag and password stay in sync for persistence
+          admin.isAdmin = true;
+          if (admin.password !== hashed) {
+            admin.password = hashed;
+          }
+          await admin.save();
+        }
+      }
+    } catch (seedErr) {
+      console.warn('⚠️  [DB] Admin seed skipped:', seedErr.message);
+    }
   } catch (error) {
     console.error("❌ Database initialization failed:", error.message);
 

@@ -24,3 +24,9 @@ export function premiumRequired(req, res, next) {
   if (!req.user.isPremium) return res.status(403).json({ error: 'Premium required' });
   next();
 }
+
+export function adminRequired(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (!req.user.isAdmin) return res.status(403).json({ error: 'Admin required' });
+  next();
+}
