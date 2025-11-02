@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { config } from '../config.js';
 import axios from 'axios';
 import Home from './Home.jsx';
 import Admin from './Admin.jsx';
@@ -50,8 +51,8 @@ export default function App() {
       <header className='bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-200'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center'>
           <div className='flex items-center gap-2 cursor-pointer' onClick={() => setView('home')}>
-            <img src='/logos/logo.png' alt='TalkSphere AI' className='w-8 h-8 sm:w-10 sm:h-10' />
-            <h1 className='text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent'>TalkSphere AI</h1>
+            <img src={config.app.logo.small} alt={config.app.name} className='w-8 h-8 sm:w-10 sm:h-10' />
+            <h1 className='text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent'>{config.app.name}</h1>
           </div>
           
           {/* Desktop Navigation */}

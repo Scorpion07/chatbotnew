@@ -1,4 +1,8 @@
 // Configuration file for frontend
+// Import brand assets directly from repository-level logo/ folder so Vite bundles them
+import LogoSmall from "../../logo/logo.svg";
+import LogoLarge from "../../logo/logo-full-transparent.png";
+import Favicon from "../../logo/favicon.png";
 export const config = {
   // API Configuration
   api: {
@@ -27,9 +31,9 @@ export const config = {
     version: import.meta.env.VITE_APP_VERSION || "1.0.0",
     description: "Access GPT-4, Claude, Gemini, and more from one beautiful interface",
     logo: {
-      small: "/logos/logo.png",
-      large: "/logos/logo-large.png",
-      favicon: "/logos/favicon.png"
+      small: LogoSmall,
+      large: LogoLarge,
+      favicon: Favicon
     }
   },
 
