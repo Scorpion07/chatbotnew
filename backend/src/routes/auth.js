@@ -10,6 +10,30 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const TOKEN_EXPIRY = "7d"; // JWT validity
 
+// ---------- PROBE-FRIENDLY OPTIONS + METHOD GUARDS ----------
+const ALLOW_HEADER = "POST, OPTIONS";
+
+function sendOptions(req, res) {
+  res.set("Allow", ALLOW_HEADER);
+  return res.sendStatus(204);
+}
+
+function methodNotAllowed(req, res) {
+  res.set("Allow", ALLOW_HEADER);
+  return res.sendStatus(405);
+}
+
+// OPTIONS handlers for common auth endpoints
+router.options("/signup", sendOptions);
+router.options("/login", sendOptions);
+router.options("/google", sendOptions);
+
+// Guard non-POST/OPTIONS methods to return 405 instead of 404 for probes like HEAD
+router.all(["/signup", "/login", "/google"], (req, res, next) => {
+  if (req.method === "POST" || req.method === "OPTIONS") return next();
+  return methodNotAllowed(req, res);
+});
+
 // ---------- HELPERS ----------
 function generateToken(user) {
   return jwt.sign(
