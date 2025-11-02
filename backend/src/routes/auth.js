@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import { User } from "../models/index.js";
+import { authRequired } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -148,3 +149,27 @@ router.post("/logout", (req, res) => {
 });
 
 export default router;
+
+// ---------- PREMIUM TOGGLE (TEMP: used by placeholder payment page) ----------
+// Marks the authenticated user as premium. In production, do this from a payment webhook.
+router.post('/subscribe', authRequired, async (req, res) => {
+  try {
+    req.user.isPremium = true;
+    await req.user.save();
+    return res.json({ ok: true, user: sanitizeUser(req.user) });
+  } catch (e) {
+    console.error('Subscribe error:', e.message);
+    return res.status(500).json({ message: 'Failed to subscribe' });
+  }
+});
+
+router.post('/unsubscribe', authRequired, async (req, res) => {
+  try {
+    req.user.isPremium = false;
+    await req.user.save();
+    return res.json({ ok: true, user: sanitizeUser(req.user) });
+  } catch (e) {
+    console.error('Unsubscribe error:', e.message);
+    return res.status(500).json({ message: 'Failed to unsubscribe' });
+  }
+});

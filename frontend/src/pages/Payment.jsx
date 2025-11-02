@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { getApiUrl } from '../config.js';
 
 export default function Payment({ onComplete }) {
   const [loading, setLoading] = useState(false);
@@ -25,7 +26,7 @@ export default function Payment({ onComplete }) {
       }
 
       // In production, remove this direct call and let the payment gateway webhook handle it
-      await axios.post('/api/auth/subscribe', {}, {
+      await axios.post(getApiUrl('/api/auth/subscribe'), {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage('Payment successful! Premium unlocked.');
