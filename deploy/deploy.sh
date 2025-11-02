@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== TalkSphere AI Auto-Deploy Script ==="
+echo "=== ChatVerse AI Auto-Deploy Script ==="
 echo ""
 
 # Variables - CHANGE THESE IF NEEDED
@@ -101,12 +101,7 @@ echo ""
 echo ">> Starting backend with PM2..."
 cd "$BACKEND_DIR"
 pm2 delete chatverse-backend 2>/dev/null || true
-# Use the correct ecosystem file extension from repo (CommonJS)
-if [ -f ecosystem.config.cjs ]; then
-  pm2 start ecosystem.config.cjs
-else
-  pm2 start ecosystem.config.js
-fi
+pm2 start ecosystem.config.js
 pm2 save
 pm2 startup | grep -v "PM2" | sudo bash || true
 
@@ -115,10 +110,7 @@ echo "============================================"
 echo "✅ DEPLOYMENT COMPLETE!"
 echo "============================================"
 echo ""
-PRIVATE_IP=$(hostname -I | awk '{print $1}')
-PUBLIC_IP=$(curl -s https://ifconfig.me || dig -4 +short myip.opendns.com @resolver1.opendns.com || echo "<public-ip>")
-echo "Private:  http://$PRIVATE_IP"
-echo "Public:   http://$PUBLIC_IP"
+echo "Frontend: http://$(hostname -I | awk '{print $1}')"
 echo "Backend running on port 5000 (proxied via Nginx)"
 echo ""
 echo "Useful commands:"

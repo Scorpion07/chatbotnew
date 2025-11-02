@@ -2,7 +2,7 @@
   "bots": [
     {
       "id": 1,
-  "name": "gpt-image-1",
+      "name": "AI Filter",
       "provider": "imageMagic",
       "status": "online",
       "description": "AI Filter transforms your uploaded images into stunning new styles, letting you reimagine your photos with professional filters and effects.",
@@ -13,7 +13,7 @@
     },
     {
       "id": 2,
-  "name": "gpt-4o-mini",
+      "name": "AI Search Engine",
       "provider": "searchAI",
       "status": "online",
       "description": "An advanced web search app powered by artificial intelligence, designed to give users a wholesome search experience.",
@@ -90,7 +90,7 @@
     },
     {
       "id": 9,
-  "name": "gpt-image-1",
+      "name": "Image Generation",
       "provider": "imageai",
       "status": "online",
       "description": "Bring your ideas to life—create stunning images from just a few words! Perfect for digital art and design.",
@@ -101,7 +101,7 @@
     },
     {
       "id": 10,
-  "name": "tts-1",
+      "name": "Audio Generation",
       "provider": "openai-audio",
       "status": "online",
       "description": "Generate and transcribe audio using OpenAI's audio API. Supports speech-to-text and text-to-speech for multimedia chat.",
