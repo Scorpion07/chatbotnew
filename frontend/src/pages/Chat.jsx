@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import BotGrid from '../components/BotGrid.jsx';
+import { getApiUrl } from '../config.js';
 
 export default function Chat({ setView }) {
   const [messages, setMessages] = useState([
@@ -51,6 +52,54 @@ export default function Chat({ setView }) {
 
   // Get currently selected bot
   const selectedBot = bots.find(b => b.name === selectedModel);
+
+  // Default bots (fallback when API is unreachable or empty)
+  const defaultBots = [
+    {
+      id: 101,
+      name: 'GPT-4',
+      provider: 'openai',
+      status: 'online',
+      description: 'Most capable model',
+      tagline: 'General purpose reasoning',
+      icon: '🤖',
+      color: 'bg-gradient-to-br from-green-500 to-emerald-600',
+      isNew: false
+    },
+    {
+      id: 102,
+      name: 'Claude',
+      provider: 'anthropic',
+      status: 'online',
+      description: 'Best for analysis',
+      tagline: 'Long context & analysis',
+      icon: '🧠',
+      color: 'bg-gradient-to-br from-orange-500 to-red-600',
+      isNew: false
+    },
+    {
+      id: 103,
+      name: 'Gemini',
+      provider: 'google',
+      status: 'online',
+      description: "Google's latest",
+      tagline: 'Great for factual tasks',
+      icon: '✨',
+      color: 'bg-gradient-to-br from-blue-500 to-indigo-600',
+      isNew: false
+    },
+    {
+      id: 104,
+      name: 'Llama',
+      provider: 'meta',
+      status: 'online',
+      description: 'Open source',
+      tagline: 'Fast and inexpensive',
+      icon: '🦙',
+      color: 'bg-gradient-to-br from-purple-500 to-pink-600',
+      isNew: false
+    }
+  ];
 
   // Handle image upload for image processing bots
   const handleImageUpload = (e) => {
@@ -141,7 +190,7 @@ export default function Chat({ setView }) {
       if (botType === 'image') {
         // Call backend image endpoint
         const token = localStorage.getItem('token');
-        const res = await axios.post('/api/openai/image', { prompt: userMessage.content }, {
+        const res = await axios.post(getApiUrl('/api/openai/image'), { prompt: userMessage.content }, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         response = {
@@ -162,7 +211,7 @@ export default function Chat({ setView }) {
       } else if (botType === 'audio') {
         // Call backend audio endpoint and play audio
         const token = localStorage.getItem('token');
-        const audioRes = await fetch('/api/openai/audio', {
+        const audioRes = await fetch(getApiUrl('/api/openai/audio'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ text: userMessage.content })
@@ -189,7 +238,7 @@ export default function Chat({ setView }) {
       } else {
         // Call backend chat endpoint
         const token = localStorage.getItem('token');
-        const res = await axios.post('/api/openai/chat', {
+        const res = await axios.post(getApiUrl('/api/openai/chat'), {
           message: userMessage.content,
           botName: selectedModel
         }, {
@@ -283,11 +332,15 @@ export default function Chat({ setView }) {
 
   useEffect(() => {
     let mounted = true;
-    axios.get('/api/bots')
-      .then(r => { if (mounted) setBots(r.data); })
+    axios.get(getApiUrl('/api/bots'))
+      .then(r => {
+        if (!mounted) return;
+        const data = Array.isArray(r.data) ? r.data : [];
+        setBots(data.length ? data : defaultBots);
+      })
       .catch((err) => {
         console.error('Error fetching bots:', err);
-        setBots([]);
+        setBots(defaultBots);
       });
     return () => { mounted = false; };
   }, []);
