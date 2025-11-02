@@ -23,8 +23,8 @@
       "isNew": true
     },
     {
-      "id": 3,
-  "name": "Claude 3.5 Sonnet",
+    "id": 3,
+  "name": "Claude",
       "provider": "anthropic",
       "status": "online",
       "description": "Anthropic's Claude 3.5 Sonnet is excellent for complex tasks like coding and handling long conversations with deep context.",
@@ -34,8 +34,8 @@
       "isNew": false
     },
     {
-      "id": 4,
-  "name": "DeepSeek V3",
+    "id": 4,
+  "name": "DeepSeek",
       "provider": "deepai",
       "status": "online",
       "description": "DeepSeek V3, the latest innovation in AI technology, excels at advanced reasoning, precise data analysis, and complex problem-solving.",
@@ -56,8 +56,8 @@
       "isNew": true
     },
     {
-      "id": 6,
-  "name": "Gemini 1.5 Pro",
+    "id": 6,
+  "name": "Google Gemini",
       "provider": "google",
       "status": "online",
       "description": "Gemini, Google's most advanced AI, is designed for a wide range of tasks, including handling text, code, and math problems.",
@@ -67,8 +67,8 @@
       "isNew": false
     },
     {
-      "id": 7,
-  "name": "Grok Mini",
+    "id": 7,
+  "name": "Grok-3 Mini",
       "provider": "x",
       "status": "online",
       "description": "Grok-3 Mini is built for speed and responsiveness. It delivers quick, accurate responses with a witty tone and personality.",
@@ -78,8 +78,8 @@
       "isNew": true
     },
     {
-      "id": 8,
-  "name": "Grok",
+    "id": 8,
+  "name": "Grok-4",
       "provider": "x",
       "status": "online",
       "description": "Grok 4 by xAI excels in tackling intricate challenges, from advanced coding to deep, context-rich conversations.",
@@ -100,8 +100,8 @@
       "isNew": false
     },
     {
-      "id": 10,
-  "name": "OpenAI Audio",
+    "id": 10,
+  "name": "Audio Generation",
       "provider": "openai-audio",
       "status": "online",
       "description": "Generate and transcribe audio using OpenAI's audio API. Supports speech-to-text and text-to-speech for multimedia chat.",
