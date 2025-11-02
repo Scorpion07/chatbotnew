@@ -11,7 +11,7 @@ export default function Chat({ setView }) {
     }
   ]);
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState('GPT-4');
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('selectedBotName') || 'GPT-4');
   const [isTyping, setIsTyping] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [bots, setBots] = useState([]);
@@ -280,6 +280,11 @@ export default function Chat({ setView }) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Persist selected bot across pages
+  useEffect(() => {
+    try { localStorage.setItem('selectedBotName', selectedModel); } catch {}
+  }, [selectedModel]);
 
   useEffect(() => {
     let mounted = true;

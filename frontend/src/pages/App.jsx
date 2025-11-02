@@ -16,6 +16,8 @@ export default function App() {
   const [authed, setAuthed] = useState(false);
   const [user, setUser] = useState(null); // { email, isPremium }
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bots, setBots] = useState([]);
+  const [showBotsMenu, setShowBotsMenu] = useState(false);
 
   const loadUser = async () => {
     const token = localStorage.getItem('token');
@@ -38,6 +40,14 @@ export default function App() {
 
   useEffect(() => {
     loadUser();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    axios.get('/api/bots')
+      .then(r => { if (mounted) setBots(r.data || []); })
+      .catch(() => setBots([]));
+    return () => { mounted = false; };
   }, []);
 
   const handleLogout = () => {
@@ -63,6 +73,47 @@ export default function App() {
             <button onClick={() => setView('pricing')} className={`px-4 py-2 rounded-lg font-medium transition-all ${view === 'pricing' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}>
               Pricing
             </button>
+            {/* Bots Dropdown */}
+            <div className='relative'>
+              <button onClick={() => setShowBotsMenu(v => !v)} className='px-4 py-2 rounded-lg font-medium transition-all text-gray-600 hover:bg-gray-100 flex items-center gap-2'>
+                Bots
+                <svg className={`w-4 h-4 transition-transform ${showBotsMenu ? 'rotate-180' : ''}`} fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 9l-7 7-7-7' />
+                </svg>
+              </button>
+              {showBotsMenu && (
+                <div className='absolute right-0 mt-2 w-80 max-h-96 overflow-auto bg-white rounded-xl shadow-xl border border-gray-200 p-2 z-50'>
+                  <div className='px-2 py-1 text-xs text-gray-500'>All Bots</div>
+                  <div className='divide-y divide-gray-100'>
+                    {bots.map(bot => (
+                      <button
+                        key={bot.id}
+                        onClick={() => {
+                          try { localStorage.setItem('selectedBotName', bot.name); } catch {}
+                          setShowBotsMenu(false);
+                          setView('chat');
+                        }}
+                        className='w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 text-left'
+                      >
+                        <div className='w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden'>
+                          {typeof bot.icon === 'string' && /(\.(png|jpe?g|svg|gif|webp)$|^https?:\/\/|^\/)/i.test(bot.icon)
+                            ? <img src={bot.icon} alt={bot.name} className='w-full h-full object-cover' />
+                            : <span className='text-lg'>{bot.icon || '🤖'}</span>}
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <div className='font-medium text-gray-900 truncate'>{bot.name}</div>
+                          <div className='text-xs text-gray-500 truncate'>{bot.tagline || bot.description}</div>
+                        </div>
+                        <span className='text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200'>{bot.provider}</span>
+                      </button>
+                    ))}
+                    {bots.length === 0 && (
+                      <div className='px-3 py-2 text-sm text-gray-500'>No bots available.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <button onClick={() => setView('chat')} className={`px-4 py-2 rounded-lg font-medium transition-all ${view === 'chat' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
               Start Chat
             </button>
