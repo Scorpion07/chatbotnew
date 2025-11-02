@@ -1,6 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import { User } from "../models/index.js";
 
 const router = express.Router();
@@ -8,6 +9,7 @@ const router = express.Router();
 // ---------- CONFIG ----------
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 const TOKEN_EXPIRY = "7d"; // JWT validity
 
 // ---------- PROBE-FRIENDLY OPTIONS + METHOD GUARDS ----------
@@ -95,19 +97,23 @@ router.post("/google", async (req, res) => {
   try {
     const { credential } = req.body;
     if (!credential) return res.status(400).json({ message: "Missing Google credential" });
+    if (!GOOGLE_CLIENT_ID || !googleClient) {
+      console.error("Google login error: GOOGLE_CLIENT_ID not configured");
+      return res.status(500).json({ message: "Server misconfiguration: Google client ID missing" });
+    }
 
-    // Verify Google ID token
-    const googleRes = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`
-    );
-    const googleData = await googleRes.json();
-
-    if (googleData.error || googleData.aud !== GOOGLE_CLIENT_ID) {
-      console.error("Invalid Google token:", googleData.error_description);
+    // Verify Google ID token via Google JWKS
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    if (!payload || payload.aud !== GOOGLE_CLIENT_ID) {
+      console.error("Invalid Google token: audience mismatch", { expected: GOOGLE_CLIENT_ID, got: payload?.aud });
       return res.status(401).json({ message: "Invalid Google token" });
     }
 
-    const { email, name, picture, sub } = googleData;
+    const { email, name, picture, sub } = payload;
 
     // Find or create user
     let user = await User.findOne({ where: { email } });
@@ -129,7 +135,7 @@ router.post("/google", async (req, res) => {
     const token = generateToken(user);
     res.json({ user: sanitizeUser(user), token });
   } catch (err) {
-    console.error("Google login error:", err);
+    console.error("Google login error:", err?.message || err);
     res.status(500).json({ message: "Server error" });
   }
 });
