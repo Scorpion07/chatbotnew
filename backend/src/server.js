@@ -1,6 +1,7 @@
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 import botsRouter from './routes/bots.js';
 import statsRouter from './routes/stats.js';
@@ -9,15 +10,36 @@ import authRouter from './routes/auth.js';
 import usageRouter from './routes/usage.js';
 import { initDb, sequelize } from './models/index.js';
 
+// ---------- Load environment variables ----------
+dotenv.config({ path: '.env' });
+
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+
+// ---------- Socket.IO setup ----------
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'https://talk-sphere.com',
+      'http://localhost:3000'
+    ],
+    credentials: true,
+  },
+});
 
 // ---------- Middleware ----------
-app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json({ limit: '10mb' }));
+app.use(
+  cors({
+    origin: [
+      'https://talk-sphere.com',
+      'http://localhost:3000',
+    ],
+    credentials: true,
+  })
+);
 
-// Attach socket.io instance to every request
+// Attach socket.io instance to requests
 app.use((req, res, next) => {
   req.io = io;
   next();
@@ -30,7 +52,7 @@ app.use('/api/openai', openaiRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/usage', usageRouter);
 
-// ---------- Health & Root ----------
+// ---------- Health checks ----------
 app.get('/', (req, res) => {
   res.json({ status: '✅ Backend running', time: new Date().toISOString() });
 });
@@ -52,9 +74,12 @@ io.on('connection', (socket) => {
 
 // ---------- Server startup ----------
 const PORT = process.env.PORT || 5000;
+let serverStarted = false;
 
-// Retry DB init in case of SQLite locks
 const startServer = async (retries = 5) => {
+  if (serverStarted) return; // Prevent multiple starts
+  serverStarted = true;
+
   while (retries) {
     try {
       console.log('🗄️  Initializing database...');
@@ -66,13 +91,15 @@ const startServer = async (retries = 5) => {
       });
       return;
     } catch (err) {
-      console.error(`DB init failed (${retries} retries left):`, err.message);
+      console.error(`❌ DB init failed (${retries} retries left):`, err.message);
       retries -= 1;
       await new Promise((r) => setTimeout(r, 3000));
     }
   }
-  console.error('❌ Failed to initialize DB after multiple attempts. Exiting.');
+
+  console.error('💀 Failed to initialize DB after multiple attempts. Exiting.');
   process.exit(1);
 };
 
+// ---------- Start ----------
 startServer();
