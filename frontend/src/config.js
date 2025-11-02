@@ -1,7 +1,10 @@
 // Configuration file for frontend
-// Use public asset paths directly (frontend/public/* is served at "/")
+// Uses assets from frontend/public/ and consistent API routes
+
 export const config = {
+  // ==============================================================
   // API Configuration
+  // ==============================================================
   api: {
     baseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 10000,
@@ -10,23 +13,31 @@ export const config = {
       bots: "/api/bots",
       openai: "/api/openai",
       stats: "/api/stats",
-      usage: "/api/usage"
+      usage: "/api/usage",
+      contact: "/api/contact" // ✅ Added contact route
     }
   },
 
+  // ==============================================================
   // Authentication Configuration
+  // ==============================================================
   auth: {
-    googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE",
+    googleClientId:
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE",
     tokenKey: "token",
     loginRedirect: "chat",
     logoutRedirect: "home"
   },
 
+  // ==============================================================
   // Application Configuration
+  // ==============================================================
   app: {
     name: import.meta.env.VITE_APP_NAME || "TalkSphere AI",
     version: import.meta.env.VITE_APP_VERSION || "1.0.0",
-    description: "Access GPT-4, Claude, Gemini, and more from one beautiful interface",
+    description:
+      "Access GPT-4, Claude, Gemini, and more from one beautiful interface",
     logo: {
       small: "/logo/logo.svg",
       large: "/logo/logo-full-transparent.png",
@@ -34,7 +45,9 @@ export const config = {
     }
   },
 
+  // ==============================================================
   // Feature Flags
+  // ==============================================================
   features: {
     googleAuth: import.meta.env.VITE_ENABLE_GOOGLE_AUTH !== "false",
     darkMode: import.meta.env.VITE_ENABLE_DARK_MODE !== "false",
@@ -44,7 +57,9 @@ export const config = {
     analytics: import.meta.env.VITE_ENABLE_ANALYTICS === "true"
   },
 
+  // ==============================================================
   // UI Configuration
+  // ==============================================================
   ui: {
     theme: {
       primary: "indigo",
@@ -57,15 +72,21 @@ export const config = {
     transitions: import.meta.env.VITE_ENABLE_TRANSITIONS !== "false"
   },
 
+  // ==============================================================
   // Limits and Constraints
+  // ==============================================================
   limits: {
     freeUserQueries: parseInt(import.meta.env.VITE_FREE_USER_LIMIT) || 5,
     maxFileSize: import.meta.env.VITE_MAX_FILE_SIZE || "10MB",
-    maxMessageLength: parseInt(import.meta.env.VITE_MAX_MESSAGE_LENGTH) || 4000,
-    rateLimitWindow: parseInt(import.meta.env.VITE_RATE_LIMIT_WINDOW) || 86400000
+    maxMessageLength:
+      parseInt(import.meta.env.VITE_MAX_MESSAGE_LENGTH) || 4000,
+    rateLimitWindow:
+      parseInt(import.meta.env.VITE_RATE_LIMIT_WINDOW) || 86400000
   },
 
-  // Development/Debug Configuration
+  // ==============================================================
+  // Development / Debug Configuration
+  // ==============================================================
   debug: {
     enabled: import.meta.env.DEV || import.meta.env.VITE_DEBUG === "true",
     showApiCalls: import.meta.env.VITE_DEBUG_API === "true",
@@ -73,13 +94,18 @@ export const config = {
   }
 };
 
+// ==============================================================
 // Validation functions
+// ==============================================================
 export function validateConfig() {
   const warnings = [];
   const errors = [];
 
   // Check Google Client ID
-  if (config.features.googleAuth && config.auth.googleClientId === "YOUR_GOOGLE_CLIENT_ID") {
+  if (
+    config.features.googleAuth &&
+    config.auth.googleClientId === "YOUR_GOOGLE_CLIENT_ID"
+  ) {
     warnings.push("Google Sign-In is enabled but CLIENT_ID is not configured");
   }
 
@@ -93,7 +119,9 @@ export function validateConfig() {
   return { warnings, errors };
 }
 
+// ==============================================================
 // Utility functions
+// ==============================================================
 export function getApiUrl(endpoint = "") {
   const baseUrl = config.api.baseUrl.replace(/\/$/, "");
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
@@ -112,7 +140,9 @@ export function isDebugMode() {
   return config.debug.enabled;
 }
 
-// Legacy support - keep these for backward compatibility
+// ==============================================================
+// Legacy exports for backward compatibility
+// ==============================================================
 export const GOOGLE_CLIENT_ID = config.auth.googleClientId;
 export const API_BASE_URL = config.api.baseUrl;
 export const APP_NAME = config.app.name;

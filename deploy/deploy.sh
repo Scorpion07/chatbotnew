@@ -101,7 +101,12 @@ echo ""
 echo ">> Starting backend with PM2..."
 cd "$BACKEND_DIR"
 pm2 delete chatverse-backend 2>/dev/null || true
-pm2 start ecosystem.config.js
+# Use the correct ecosystem file extension from repo (CommonJS)
+if [ -f ecosystem.config.cjs ]; then
+  pm2 start ecosystem.config.cjs
+else
+  pm2 start ecosystem.config.js
+fi
 pm2 save
 pm2 startup | grep -v "PM2" | sudo bash || true
 
