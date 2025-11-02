@@ -24,7 +24,7 @@
     },
     {
       "id": 3,
-      "name": "Claude",
+  "name": "Claude 3.5 Sonnet",
       "provider": "anthropic",
       "status": "online",
       "description": "Anthropic's Claude 3.5 Sonnet is excellent for complex tasks like coding and handling long conversations with deep context.",
@@ -35,7 +35,7 @@
     },
     {
       "id": 4,
-      "name": "DeepSeek",
+  "name": "DeepSeek V3",
       "provider": "deepai",
       "status": "online",
       "description": "DeepSeek V3, the latest innovation in AI technology, excels at advanced reasoning, precise data analysis, and complex problem-solving.",
@@ -57,7 +57,7 @@
     },
     {
       "id": 6,
-      "name": "Google Gemini",
+  "name": "Gemini 1.5 Pro",
       "provider": "google",
       "status": "online",
       "description": "Gemini, Google's most advanced AI, is designed for a wide range of tasks, including handling text, code, and math problems.",
@@ -68,7 +68,7 @@
     },
     {
       "id": 7,
-      "name": "Grok-3 Mini",
+  "name": "Grok Mini",
       "provider": "x",
       "status": "online",
       "description": "Grok-3 Mini is built for speed and responsiveness. It delivers quick, accurate responses with a witty tone and personality.",
@@ -79,7 +79,7 @@
     },
     {
       "id": 8,
-      "name": "Grok-4",
+  "name": "Grok",
       "provider": "x",
       "status": "online",
       "description": "Grok 4 by xAI excels in tackling intricate challenges, from advanced coding to deep, context-rich conversations.",
