@@ -1,150 +1,138 @@
 import express from "express";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import fetch from "node-fetch";
 import { User } from "../models/index.js";
-import { authConfig } from "../services/configService.js";
 
 const router = express.Router();
 
-/* ============================================================
-   SIGNUP
-   ============================================================ */
+// ---------- CONFIG ----------
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const TOKEN_EXPIRY = "7d"; // JWT validity
+
+// ---------- HELPERS ----------
+function generateToken(user) {
+  return jwt.sign(
+    { id: user.id, email: user.email, isPremium: user.isPremium },
+    JWT_SECRET,
+    { expiresIn: TOKEN_EXPIRY }
+  );
+}
+
+function sanitizeUser(user) {
+  const { password, ...safeUser } = user.toJSON();
+  return safeUser;
+}
+
+// ---------- SIGNUP ----------
 router.post("/signup", async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password)
-      return res.status(400).json({ error: "Email and password required." });
+      return res.status(400).json({ message: "Email and password are required" });
 
     const existing = await User.findOne({ where: { email } });
-    if (existing)
-      return res.status(409).json({ error: "Email already exists." });
+    if (existing) return res.status(409).json({ message: "User already exists" });
 
-    const hash = await bcrypt.hash(password, authConfig.bcryptRounds || 10);
-    await User.create({ email, password: hash, isPremium: false });
+    const hashed = await bcrypt.hash(password, 8);
+    const user = await User.create({ email, password: hashed });
+    const token = generateToken(user);
 
-    console.log(`[Signup] Created user: ${email}`);
-    res.json({ success: true });
+    res.json({ user: sanitizeUser(user), token });
   } catch (err) {
     console.error("Signup error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-/* ============================================================
-   LOGIN
-   ============================================================ */
+// ---------- LOGIN ----------
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ where: { email } });
+
     if (!user || !user.password)
-      return res.status(401).json({ error: "Invalid credentials." });
+      return res.status(401).json({ message: "Invalid email or password" });
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: "Invalid credentials." });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(401).json({ message: "Invalid email or password" });
 
-    const token = jwt.sign(
-      { email, isPremium: user.isPremium },
-      authConfig.jwtSecret,
-      { expiresIn: authConfig.tokenExpiry || "7d" }
-    );
-
-    res.json({ token, isPremium: user.isPremium });
+    const token = generateToken(user);
+    res.json({ user: sanitizeUser(user), token });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-/* ============================================================
-   GOOGLE OAUTH
-   ============================================================ */
+// ---------- GOOGLE SIGN-IN ----------
 router.post("/google", async (req, res) => {
   try {
     const { credential } = req.body;
-    if (!credential)
-      return res.status(400).json({ error: "Google credential required" });
+    if (!credential) return res.status(400).json({ message: "Missing Google credential" });
 
-    const base64Payload = credential.split(".")[1];
-    const payload = JSON.parse(Buffer.from(base64Payload, "base64").toString());
+    // Verify Google ID token
+    const googleRes = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`
+    );
+    const googleData = await googleRes.json();
 
-    if (
-      payload.iss !== "https://accounts.google.com" &&
-      payload.iss !== "accounts.google.com"
-    )
-      return res.status(400).json({ error: "Invalid Google token issuer" });
-
-    if (payload.exp < Date.now() / 1000)
-      return res.status(400).json({ error: "Google token expired" });
-
-    const { email, name, picture, sub: googleId } = payload;
-    let user = await User.findOne({ where: { email } });
-
-    if (user) {
-      if (!user.googleId) {
-        await user.update({
-          googleId,
-          name: name || user.name,
-          avatar: picture || user.avatar,
-          provider: "google",
-        });
-      }
-    } else {
-      user = await User.create({
-        email,
-        googleId,
-        name,
-        avatar: picture,
-        provider: "google",
-        isPremium: false,
-      });
+    if (googleData.error || googleData.aud !== GOOGLE_CLIENT_ID) {
+      console.error("Invalid Google token:", googleData.error_description);
+      return res.status(401).json({ message: "Invalid Google token" });
     }
 
-    const token = jwt.sign(
-      { email: user.email, id: user.id },
-      authConfig.jwtSecret,
-      { expiresIn: authConfig.tokenExpiry || "7d" }
-    );
+    const { email, name, picture, sub } = googleData;
 
-    res.json({
-      token,
-      user: {
-        email: user.email,
-        name: user.name,
-        avatar: user.avatar,
-        isPremium: user.isPremium,
-        provider: user.provider,
-      },
-    });
-  } catch (error) {
-    console.error("Google auth error:", error);
-    res.status(500).json({ error: "Google authentication failed" });
+    // Find or create user
+    let user = await User.findOne({ where: { email } });
+    if (!user) {
+      user = await User.create({
+        email,
+        name,
+        avatar: picture,
+        googleId: sub,
+        provider: "google",
+      });
+    } else {
+      user.googleId = user.googleId || sub;
+      user.avatar = picture;
+      user.name = name;
+      await user.save();
+    }
+
+    const token = generateToken(user);
+    res.json({ user: sanitizeUser(user), token });
+  } catch (err) {
+    console.error("Google login error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-/* ============================================================
-   ME
-   ============================================================ */
+// ---------- ME ----------
 router.get("/me", async (req, res) => {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "No token." });
-
   try {
-    const decoded = jwt.verify(token, authConfig.jwtSecret);
-    const user = await User.findOne({ where: { email: decoded.email } });
-    if (!user) return res.status(404).json({ error: "User not found." });
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ message: "Missing Authorization header" });
 
-    res.json({
-      email: user.email,
-      name: user.name,
-      avatar: user.avatar,
-      provider: user.provider,
-      isPremium: user.isPremium,
-    });
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    const user = await User.findByPk(decoded.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ user: sanitizeUser(user) });
   } catch (err) {
-    console.error("User fetch error:", err);
-    res.status(401).json({ error: "Invalid token." });
+    console.error("Auth /me error:", err.message);
+    res.status(401).json({ message: "Invalid or expired token" });
   }
+});
+
+// ---------- LOGOUT (frontend clears token) ----------
+router.post("/logout", (req, res) => {
+  res.json({ message: "Logged out" });
 });
 
 export default router;
