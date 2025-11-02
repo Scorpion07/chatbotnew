@@ -2,7 +2,7 @@
   "bots": [
     {
       "id": 1,
-  "name": "gpt-4o-mini",
+  "name": "gpt-image-1",
       "provider": "imageMagic",
       "status": "online",
       "description": "AI Filter transforms your uploaded images into stunning new styles, letting you reimagine your photos with professional filters and effects.",
@@ -13,7 +13,7 @@
     },
     {
       "id": 2,
-  "name": "gpt-4o",
+  "name": "gpt-4o-mini",
       "provider": "searchAI",
       "status": "online",
       "description": "An advanced web search app powered by artificial intelligence, designed to give users a wholesome search experience.",

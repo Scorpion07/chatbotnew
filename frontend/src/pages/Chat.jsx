@@ -516,12 +516,8 @@ export default function Chat({ setView }) {
           {messages.map((message, index) => (
             <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {message.role === 'assistant' && (
-                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow-lg border border-gray-200`}>
-                  {typeof selectedBot?.icon === 'string' && /(\.(png|jpe?g|svg|gif|webp)$|^https?:\/\/|^\/)/i.test(selectedBot.icon) ? (
-                    <img src={selectedBot.icon} alt={selectedBot?.name || 'Bot'} className='w-full h-full object-cover' />
-                  ) : (
-                    <span className='text-lg sm:text-xl'>{selectedBot?.icon || '🤖'}</span>
-                  )}
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br ${selectedModelData?.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                  <span className='text-lg sm:text-xl'>{selectedModelData?.icon}</span>
                 </div>
               )}
               <div className={`max-w-xs sm:max-w-md md:max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
@@ -580,12 +576,8 @@ export default function Chat({ setView }) {
           
           {isTyping && (
             <div className='flex gap-4 justify-start'>
-              <div className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow-lg border border-gray-200`}>
-                {typeof selectedBot?.icon === 'string' && /(\.(png|jpe?g|svg|gif|webp)$|^https?:\/\/|^\/)/i.test(selectedBot.icon) ? (
-                  <img src={selectedBot.icon} alt={selectedBot?.name || 'Bot'} className='w-full h-full object-cover' />
-                ) : (
-                  <span className='text-xl'>{selectedBot?.icon || '🤖'}</span>
-                )}
+              <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${selectedModelData?.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                <span className='text-xl'>{selectedModelData?.icon}</span>
               </div>
               <div className='bg-white border border-gray-200 rounded-2xl rounded-tl-none px-5 py-3 shadow-sm'>
                 <div className='flex gap-1'>
