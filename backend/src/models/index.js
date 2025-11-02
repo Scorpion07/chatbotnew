@@ -61,16 +61,29 @@ export async function initDb() {
 
   try {
     console.log("🗄️  [DB] Syncing models...");
+
+    // Defensive data fixups BEFORE sync to avoid validation errors on constraints
+    try {
+      // Ensure table exists before attempting updates
+      await sequelize.query(
+        "UPDATE Users SET email = ('user' || id || '@local.invalid') WHERE (email IS NULL OR email = '')"
+      );
+    } catch (e) {
+      // Table may not exist yet (first run) — ignore
+    }
+
     await sequelize.sync({ alter: true });
 
-    // Add unique index safely (SQLite allows NULL duplicates)
-    const table = User.getTableName();
-    const tableName = typeof table === "string" ? table : table.tableName;
-
-    await sequelize.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_googleId 
-      ON ${tableName} (googleId);
-    `);
+    // Add unique index safely (SQLite allows multiple NULLs)
+    try {
+      const table = User.getTableName();
+      const tableName = typeof table === "string" ? table : table.tableName;
+      await sequelize.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_googleId ON ${tableName} (googleId);`
+      );
+    } catch (e) {
+      console.warn("⚠️  [DB] Skipping unique index creation for User.googleId:", e.message);
+    }
 
     console.log("✅ [DB] Synced successfully");
   } catch (error) {
