@@ -57,8 +57,8 @@ export default function App() {
     setView('home');
   };
   return (
-    <div className='min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900'>
-      <header className='bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-200'>
+    <div className='min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 dark:from-gray-900 dark:to-gray-950 dark:text-gray-100'>
+  <header className='bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center'>
           <div className='flex items-center gap-2 cursor-pointer' onClick={() => setView('home')}>
             <img src={config.app.logo.small} alt={config.app.name} className='w-8 h-8 sm:w-10 sm:h-10' />
