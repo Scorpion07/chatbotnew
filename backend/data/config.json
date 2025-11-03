@@ -115,6 +115,18 @@
       "icon": "🔊",
       "color": "bg-gradient-to-br from-yellow-500 to-orange-600",
       "isNew": true
+    },
+    {
+      "id": 11,
+      "name": "GPT-4o",
+      "model": "GPT-4o",
+      "provider": "openai",
+      "status": "online",
+      "description": "OpenAI's most advanced model, delivering exceptional performance in text, reasoning, and coding tasks.",
+      "tagline": "The latest and greatest from OpenAI",
+      "icon": "🧠",
+      "color": "bg-gradient-to-br from-green-500 to-emerald-600",
+      "isNew": true
     }
   ],
   "stats": {
