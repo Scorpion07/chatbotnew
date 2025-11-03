@@ -10,9 +10,22 @@ export default function Admin() {
   const [form, setForm] = useState({ name:'', provider:'' });
   const [userEmail, setUserEmail] = useState('');
   const [userPremium, setUserPremium] = useState(true);
+  const [user, setUser] = useState(null); // { email, isPremium, isAdmin }
 
   useEffect(() => {
+    // Load initial data
     load();
+    // Fetch current user for gating controls
+    const token = localStorage.getItem('token');
+    if (token) {
+      axios.get(getApiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => setUser(res.data?.user || null))
+        .catch(() => setUser(null));
+    } else {
+      setUser(null);
+    }
+
+    // Live updates via socket
     const socket = io(config.api.baseUrl);
     socket.on('bots:update', setBots);
     socket.on('stats:update', setStats);
@@ -29,7 +42,9 @@ export default function Admin() {
 
   async function addBot(e){
     e.preventDefault();
-    await axios.post(getApiUrl('/api/bots'), form);
+    // Optional: include auth header if available (backend may enforce perms)
+    const token = localStorage.getItem('token');
+    await axios.post(getApiUrl('/api/bots'), form, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
     setForm({name:'',provider:''});
   }
 
@@ -37,9 +52,7 @@ export default function Admin() {
     await axios.delete(getApiUrl(`/api/bots/${id}`));
   }
 
-  async function saveStats(){
-    await axios.post(getApiUrl('/api/stats'), stats);
-  }
+  // Manual stats editing removed; stats are real-time from server via socket
 
   async function setPremium(e){
     e.preventDefault();
@@ -63,7 +76,10 @@ export default function Admin() {
         {Object.entries(stats).map(([k,v])=>(
           <div key={k} className='bg-white p-6 rounded-xl shadow-sm'>
             <div className='text-4xl font-bold'>{v}</div>
-            <div className='text-gray-500'>{k}</div>
+            <div className='text-gray-500 flex items-center gap-2'>
+              <span>{k}</span>
+              <span className='text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200'>live</span>
+            </div>
           </div>
         ))}
       </div>
@@ -81,27 +97,30 @@ export default function Admin() {
           ))}
         </div>
         <div>
-          <h3 className='text-lg font-semibold mb-3'>Add Bot</h3>
-          <form onSubmit={addBot} className='bg-white p-4 rounded-md shadow'>
-            <input placeholder='Bot name' value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className='w-full border p-2 mb-3 rounded' required/>
-            <input placeholder='Provider' value={form.provider} onChange={e=>setForm({...form,provider:e.target.value})} className='w-full border p-2 mb-3 rounded'/>
-            <button className='bg-indigo-600 text-white px-4 py-2 rounded-md'>Add</button>
-          </form>
-          <h3 className='text-lg font-semibold mt-6 mb-3'>Update Stats</h3>
-          {Object.keys(stats).map(k=>(
-            <input key={k} type='number' value={stats[k]} onChange={e=>setStats({...stats,[k]:parseInt(e.target.value||0)})} className='w-full border p-2 mb-2 rounded' placeholder={k}/>
-          ))}
-          <button onClick={saveStats} className='bg-indigo-600 text-white px-4 py-2 rounded-md mt-2'>Save Stats</button>
+          {(user?.isAdmin || user?.isPremium) && (
+            <>
+              <h3 className='text-lg font-semibold mb-3'>Add Bot</h3>
+              <form onSubmit={addBot} className='bg-white p-4 rounded-md shadow'>
+                <input placeholder='Bot name' value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className='w-full border p-2 mb-3 rounded' required/>
+                <input placeholder='Provider' value={form.provider} onChange={e=>setForm({...form,provider:e.target.value})} className='w-full border p-2 mb-3 rounded'/>
+                <button className='bg-indigo-600 text-white px-4 py-2 rounded-md'>Add</button>
+              </form>
+            </>
+          )}
 
-          <h3 className='text-lg font-semibold mt-8 mb-3'>User Premium Control</h3>
-          <form onSubmit={setPremium} className='bg-white p-4 rounded-md shadow'>
-            <input type='email' required placeholder='user@example.com' value={userEmail} onChange={e=>setUserEmail(e.target.value)} className='w-full border p-2 mb-3 rounded'/>
-            <label className='flex items-center gap-2 mb-3'>
-              <input type='checkbox' checked={userPremium} onChange={e=>setUserPremium(e.target.checked)} />
-              <span>Set as Premium</span>
-            </label>
-            <button className='bg-green-600 text-white px-4 py-2 rounded-md'>Update</button>
-          </form>
+          {user?.isAdmin && (
+            <>
+              <h3 className='text-lg font-semibold mt-8 mb-3'>User Premium Control</h3>
+              <form onSubmit={setPremium} className='bg-white p-4 rounded-md shadow'>
+                <input type='email' required placeholder='user@example.com' value={userEmail} onChange={e=>setUserEmail(e.target.value)} className='w-full border p-2 mb-3 rounded'/>
+                <label className='flex items-center gap-2 mb-3'>
+                  <input type='checkbox' checked={userPremium} onChange={e=>setUserPremium(e.target.checked)} />
+                  <span>Set as Premium</span>
+                </label>
+                <button className='bg-green-600 text-white px-4 py-2 rounded-md'>Update</button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>
