@@ -7,6 +7,24 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 
 export default function Chat({ setView }) {
+  // Theme: persisted dark mode toggle
+  const prefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const [isDark, setIsDark] = useState(() => {
+    try {
+      const stored = localStorage.getItem('theme');
+      if (stored === 'dark') return true;
+      if (stored === 'light') return false;
+    } catch {}
+    return !!prefersDark;
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch {}
+    // Toggle dark class on html element
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', isDark);
+    }
+  }, [isDark]);
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -504,6 +522,24 @@ export default function Chat({ setView }) {
             
             {/* Bot Selector Dropdown */}
             <div className='flex gap-2 items-center relative'>
+              {/* Dark mode toggle */}
+              <button
+                type='button'
+                aria-label='Toggle dark mode'
+                onClick={() => setIsDark(d => !d)}
+                className='p-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-500 transition-colors'
+                title={isDark ? 'Switch to light' : 'Switch to dark'}
+              >
+                {isDark ? (
+                  <svg className='w-5 h-5 text-yellow-300' fill='currentColor' viewBox='0 0 20 20'>
+                    <path d='M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4.22 2.03a1 1 0 011.415 0l.708.707a1 1 0 11-1.414 1.415l-.709-.708a1 1 0 010-1.414zM17 9a1 1 0 110 2h-1a1 1 0 110-2h1zM4 10a1 1 0 100 2H3a1 1 0 100-2h1zm1.657-5.657a1 1 0 010 1.414l-.708.709A1 1 0 012.535 4.95l.708-.708a1 1 0 011.414 0zM10 16a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm6.364-2.95a1 1 0 010 1.415l-.708.708a1 1 0 11-1.414-1.414l.708-.709a1 1 0 011.414 0zM6.343 15.657a1 1 0 010-1.414l.708-.709a1 1 0 111.415 1.415l-.709.708a1 1 0 01-1.414 0z'/>
+                  </svg>
+                ) : (
+                  <svg className='w-5 h-5 text-gray-600' fill='currentColor' viewBox='0 0 20 20'>
+                    <path d='M17.293 13.293A8 8 0 116.707 2.707 8.001 8.001 0 0017.293 13.293z' />
+                  </svg>
+                )}
+              </button>
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
