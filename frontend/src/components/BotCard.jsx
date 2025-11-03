@@ -14,7 +14,7 @@ export default function BotCard({ bot, onClick }) {
                 // Image path or URL
                 <img
                   src={bot.icon}
-                  alt={bot.name}
+                  alt={bot.model || bot.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     // Fallback to emoji if image fails

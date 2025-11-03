@@ -97,7 +97,7 @@ export default function App() {
                       >
                         <div className='w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden'>
                           {typeof bot.icon === 'string' && /(\.(png|jpe?g|svg|gif|webp)$|^https?:\/\/|^\/)/i.test(bot.icon)
-                            ? <img src={bot.icon} alt={bot.name} className='w-full h-full object-cover' />
+                            ? <img src={bot.icon} alt={bot.model || bot.name} className='w-full h-full object-cover' />
                             : <span className='text-lg'>{bot.icon || '🤖'}</span>}
                         </div>
                         <div className='flex-1 min-w-0'>
