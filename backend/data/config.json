@@ -127,6 +127,42 @@
       "icon": "🧠",
       "color": "bg-gradient-to-br from-green-500 to-emerald-600",
       "isNew": true
+    },
+    {
+      "id": 12,
+      "name": "GPT-4.1",
+      "model": "GPT-4.1",
+      "provider": "openai",
+      "status": "online",
+      "description": "OpenAI's flagship general-purpose model for strong reasoning, coding, and complex tasks.",
+      "tagline": "Flagship GPT model",
+      "icon": "🤖",
+      "color": "bg-gradient-to-br from-emerald-600 to-green-600",
+      "isNew": true
+    },
+    {
+      "id": 13,
+      "name": "GPT-4.1 Mini",
+      "model": "GPT-4.1 Mini",
+      "provider": "openai",
+      "status": "online",
+      "description": "Smaller, faster GPT ideal for chat and lightweight tasks with great cost efficiency.",
+      "tagline": "Fast & efficient",
+      "icon": "⚡",
+      "color": "bg-gradient-to-br from-green-500 to-emerald-500",
+      "isNew": true
+    },
+    {
+      "id": 14,
+      "name": "GPT-4o mini",
+      "model": "GPT-4o mini",
+      "provider": "openai",
+      "status": "online",
+      "description": "Lightweight Omni model optimized for low-latency responses.",
+      "tagline": "Low-latency omni",
+      "icon": "🌿",
+      "color": "bg-gradient-to-br from-teal-500 to-cyan-600",
+      "isNew": true
     }
   ],
   "stats": {
