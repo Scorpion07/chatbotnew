@@ -1,28 +1,6 @@
 {
   "bots": [
     {
-      "id": 1,
-  "name": "ImageMagic Filters",
-      "provider": "imageMagic",
-      "status": "online",
-      "description": "AI Filter transforms your uploaded images into stunning new styles, letting you reimagine your photos with professional filters and effects.",
-      "tagline": "Great at transforming photos",
-      "icon": "🎨",
-      "color": "bg-gradient-to-br from-blue-500 to-indigo-600",
-      "isNew": true
-    },
-    {
-      "id": 2,
-  "name": "SearchAI",
-      "provider": "searchAI",
-      "status": "online",
-      "description": "An advanced web search app powered by artificial intelligence, designed to give users a wholesome search experience.",
-      "tagline": "Great for advanced web search",
-      "icon": "🔍",
-      "color": "bg-gradient-to-br from-violet-500 to-purple-600",
-      "isNew": true
-    },
-    {
     "id": 3,
   "name": "Claude",
       "model": "Claude 3.5 Sonnet",
