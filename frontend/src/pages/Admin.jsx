@@ -73,7 +73,7 @@ export default function Admin() {
           {bots.map(b=>(
             <div key={b.id} className='bg-white p-4 rounded-md shadow flex justify-between items-center mb-2'>
               <div>
-                <div className='font-medium'>{b.name}</div>
+                <div className='font-medium'>{b.model || b.name}</div>
                 <div className='text-xs text-gray-500'>{b.provider} • {b.status}</div>
               </div>
               <button onClick={()=>delBot(b.id)} className='bg-red-500 text-white px-3 py-1 rounded-md text-sm'>Remove</button>

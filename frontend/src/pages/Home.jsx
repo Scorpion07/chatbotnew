@@ -45,7 +45,7 @@ export default function Home({ setView }) {
             </div>
             <div className='p-8 bg-gradient-to-br from-gray-50 to-white'>
               <div className='flex gap-3 mb-6'>
-                {['GPT-4', 'Claude', 'Gemini', 'Llama'].map((model, i) => (
+                {['GPT-4o mini', 'Claude 3.5 Sonnet', 'Gemini 1.5 Pro', 'Grok-4'].map((model, i) => (
                   <div key={model} className={`px-4 py-2 rounded-lg text-sm font-medium ${i === 0 ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-200 text-gray-600'}`}>
                     {model}
                   </div>
