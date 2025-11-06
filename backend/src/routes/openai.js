@@ -255,7 +255,7 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  let { prompt } = req.body;
+  let { prompt, size = "512x512", quality = "standard" } = req.body || {};
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required." });
@@ -267,51 +267,22 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
     if (prompt === "") {
       prompt = "Generate a creative image inspired by the uploaded photo.";
     }
-    // If a Meta/ImageMagic API key is provided, prefer calling that provider.
-    // Environment variables supported:
-    // - IMAGEMAGIC_API_KEY (existing config)
-    // - META_IMAGE_URL (optional override for the Meta image endpoint)
-    const metaKey = process.env.IMAGEMAGIC_API_KEY || process.env.META_API_KEY || '';
-    const metaUrl = process.env.META_IMAGE_URL || 'https://api.meta.ai/images/generate';
 
-    if (metaKey) {
-      try {
-        // Use global fetch (Node 18+). Payload shape is provider-specific; we send a simple JSON payload.
-        const metaResp = await fetch(metaUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${metaKey}`
-          },
-          body: JSON.stringify({ prompt, size: '512x512' })
-        });
-
-        if (!metaResp.ok) {
-          const text = await metaResp.text().catch(() => '');
-          throw new Error(`Meta image API returned ${metaResp.status}: ${text}`);
-        }
-
-        const json = await metaResp.json().catch(() => null);
-        // Try common response shapes
-        const url = json?.url || json?.data?.[0]?.url || json?.output?.[0]?.image_url || json?.images?.[0]?.url;
-        if (!url) throw new Error('Meta image API did not return a usable image URL');
-
-        return res.json({ url });
-      } catch (metaErr) {
-        console.error('❌ Meta image generation failed, falling back to OpenAI:', metaErr);
-        // Continue to try OpenAI below as a fallback
-      }
-    }
-
-    // Fallback to OpenAI image generation
     const response = await openai.images.generate({
       model: "gpt-image-1",
       prompt,
       n: 1,
-      size: "512x512",
+      size,
+      quality,
+      response_format: 'b64_json'
     });
 
-    res.json({ url: response.data[0].url });
+    const b64 = response?.data?.[0]?.b64_json;
+    if (!b64) {
+      return res.status(500).json({ error: 'Image generation failed: empty response.' });
+    }
+    const dataUrl = `data:image/png;base64,${b64}`;
+    res.json({ url: dataUrl });
   } catch (err) {
     if (err.code === "billing_hard_limit_reached") {
       return res.status(402).json({

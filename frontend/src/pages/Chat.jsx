@@ -372,7 +372,7 @@ export default function Chat({ setView }) {
       }
     } catch (err) {
       // If server enforced limit, show upgrade modal
-      if (err?.response?.status === 402) {
+      if (err?.response?.status === 402 || err?.response?.status === 403) {
         setShowUpgrade(true);
       } else if (err?.response?.status === 401) {
         // Not authenticated -> navigate to login
