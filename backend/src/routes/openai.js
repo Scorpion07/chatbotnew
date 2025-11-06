@@ -269,41 +269,47 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
   try {
-    let { prompt } = req.body || {};
+    const prompt = req.body?.prompt;
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'Prompt is required.' });
     }
 
-    // Clean up prompt: remove markdown or base64 image text
-    prompt = prompt.replace(/!\[.*?\]\(.*?\)/g, '').trim();
-    if (prompt === '') {
-      prompt = 'Generate a creative image';
-    }
-
-    // Call Gemini Images REST API (gemini-1.5-flash:generateImage)
     const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!GEMINI_KEY) {
       return res.status(500).json({ error: 'Gemini API key is not configured on the server.' });
     }
+
     const response = await axios({
       method: 'post',
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateImage?key=${GEMINI_KEY}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${GEMINI_KEY}`,
       headers: { 'Content-Type': 'application/json' },
-      data: { prompt }
+      data: {
+        contents: [
+          {
+            parts: [
+              {
+                text: `Generate a realistic image based on this description: ${prompt}`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: 'image/png'
+        }
+      }
     });
 
-    const base64 = response?.data?.images?.[0]?.data
-      || response?.data?.data?.[0]?.b64
-      || response?.data?.data?.[0]?.b64_json
-      || response?.data?.candidates?.[0]?.content?.parts?.find(p => p?.inlineData)?.inlineData?.data;
+    const base64Image = response?.data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 
-    if (!base64) {
+    if (!base64Image) {
       return res.status(500).json({ error: 'No image returned from Gemini' });
     }
 
-    return res.json({ url: `data:image/png;base64,${base64}` });
+    const dataUrl = `data:image/png;base64,${base64Image}`;
+    // Preserve backward compatibility with existing frontend ('url') while also returning 'image' and 'success'.
+    return res.json({ success: true, image: dataUrl, url: dataUrl });
   } catch (err) {
-    console.error('❌ Gemini Image Error:', err?.response?.data || err.message || err);
+    console.error('Gemini Image Error:', err?.response?.data || err);
     return res.status(500).json({ error: 'Gemini image generation failed' });
   }
 });
