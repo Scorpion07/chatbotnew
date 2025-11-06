@@ -1,5 +1,6 @@
 import express from "express";
 import OpenAI from "openai";
+import axios from "axios";
 import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
@@ -332,54 +333,68 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
 // 🔊 TEXT-TO-SPEECH (TTS) ENDPOINT (premium only)
 // =====================================================
 router.post("/audio", authRequired, premiumRequired, async (req, res) => {
-  const { text, format = 'mp3', duration = 10 } = req.body || {};
-  if (!text || typeof text !== 'string') {
-    return res.status(400).json({ error: 'Text is required for audio generation.' });
-  }
   try {
-    if (apiKeys.stability) {
-      // Generate music/audio from text via Stability (Stable Audio)
-      const endpoint = 'https://api.stability.ai/v2beta/audio/text-to-music';
-      const body = {
-        prompt: text,
-        duration: Math.max(1, Math.min(90, parseInt(duration) || 10)),
-        format
-      };
-      const resp = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKeys.stability}`,
-          'Content-Type': 'application/json',
-          'Accept': 'audio/*'
-        },
-        body: JSON.stringify(body)
-      });
-      if (!resp.ok) {
-        const textErr = await resp.text();
-        console.error('Stability audio error:', resp.status, textErr);
-        return res.status(500).json({ error: 'Stability audio generation failed', details: textErr });
-      }
-      const arrayBuf = await resp.arrayBuffer();
-      const buffer = Buffer.from(arrayBuf);
-      res.setHeader('Content-Type', format === 'wav' ? 'audio/wav' : 'audio/mpeg');
-      res.setHeader('Content-Length', buffer.length);
-      return res.send(buffer);
+    const { text, format = 'mp3' } = req.body || {};
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'Text is required for audio generation.' });
     }
 
-    // Fallback to OpenAI TTS if Stability not configured
-    const tts = await openai.audio.speech.create({
-      model: 'tts-1',
-      voice: 'alloy',
-      input: text,
-      format,
-    });
-    const buffer = Buffer.from(await tts.arrayBuffer());
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', buffer.length);
-    return res.send(buffer);
+    const wantsJson = (req.headers.accept || '').includes('application/json') || String(req.query.base64 || '') === '1';
+
+    // Primary: OpenAI TTS (gpt-4o-mini-tts)
+    try {
+      const oai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const audio = await oai.audio.speech.create({
+        model: 'gpt-4o-mini-tts',
+        voice: 'alloy',
+        input: text,
+        format: 'mp3'
+      });
+      const buffer = Buffer.from(await audio.arrayBuffer());
+
+      if (wantsJson) {
+        return res.json({ success: true, provider: 'openai', audio: buffer.toString('base64') });
+      }
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
+    } catch (err) {
+      console.error('OpenAI audio failed, trying Gemini...', err?.response?.data || err?.message || err);
+    }
+
+    // Fallback: Gemini audio (gemini-2.0-flash) with response_mime_type=audio/wav
+    try {
+      const response = await axios.post(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+        {
+          contents: [{ parts: [{ text }] }],
+          generationConfig: { response_mime_type: 'audio/wav' }
+        },
+        {
+          params: { key: process.env.GOOGLE_API_KEY },
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+
+      // API may return base64 audio data in a part; honor the provided structure
+      const part = response.data?.candidates?.[0]?.content?.parts?.[0];
+      const audioB64 = typeof part === 'string' ? part : (part?.audio || part?.inline_data?.data || null);
+      if (!audioB64) throw new Error('No audio from Gemini');
+
+      if (wantsJson) {
+        return res.json({ success: true, provider: 'gemini', audio: audioB64 });
+      }
+      const buffer = Buffer.from(audioB64, 'base64');
+      res.setHeader('Content-Type', 'audio/wav');
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
+    } catch (err) {
+      console.error('Gemini audio error:', err?.response?.data || err?.message || err);
+      return res.status(500).json({ error: 'Audio generation failed.', details: err?.response?.data || err?.message || err });
+    }
   } catch (err) {
-    console.error('❌ Audio generation error:', err);
-    return res.status(500).json({ error: 'Failed to generate audio.' });
+    console.error('Audio route failed:', err);
+    return res.status(500).json({ error: 'Fatal audio error' });
   }
 });
 
