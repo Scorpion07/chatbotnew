@@ -165,19 +165,15 @@ export default function Chat({ setView }) {
     }
   };
 
-  // Handle image upload for image processing bots
+  // Handle image upload (available for all models; preview and attach on send)
+  const [selectedImagePreview, setSelectedImagePreview] = useState(null);
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedImage(file);
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setMessages(prev => [...prev, {
-          role: 'user',
-          content: `![Uploaded Image](${e.target?.result})`,
-          model: selectedModel,
-          type: 'image'
-        }]);
+      reader.onload = (ev) => {
+        setSelectedImagePreview(ev.target?.result);
       };
       reader.readAsDataURL(file);
     }
@@ -192,15 +188,14 @@ export default function Chat({ setView }) {
     let userMessage;
     let botType = 'text';
     if (selectedBot?.provider === 'imageai') {
-      // Check if premium for image feature
+      // Image generation bot (OpenAI images). Premium only.
       if (!isPremium) {
         alert('Image generation is a premium feature. Please upgrade to continue.');
         return;
       }
-      if (!selectedImage) return;
       userMessage = {
         role: 'user',
-        content: input || 'Please process this image',
+        content: input || 'Generate an image',
         model: selectedModel,
         type: 'image'
       };
@@ -239,7 +234,8 @@ export default function Chat({ setView }) {
     setMessages([...messages, userMessage]);
     setInput('');
     setSearchQuery('');
-    setSelectedImage(null);
+  setSelectedImage(null);
+  setSelectedImagePreview(null);
     setIsTyping(true);
 
     try {
@@ -265,7 +261,7 @@ export default function Chat({ setView }) {
           type: 'search',
           results: []
         };
-      } else if (botType === 'audio') {
+  } else if (botType === 'audio') {
         // Call backend audio endpoint and play audio
         const token = localStorage.getItem('token');
         const audioRes = await fetch(getApiUrl('/api/openai/audio'), {
@@ -311,13 +307,14 @@ export default function Chat({ setView }) {
         setMessages(prev => [...prev, placeholder]);
 
         // Start streaming
+        const contentWithImage = selectedImagePreview ? `${userMessage.content}\n\n![Uploaded Image](${selectedImagePreview})` : userMessage.content;
         const streamRes = await fetch(getApiUrl('/api/openai/chat/stream'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {})
           },
-          body: JSON.stringify({ message: userMessage.content, botName: selectedModel, conversationId: convId })
+          body: JSON.stringify({ message: contentWithImage, botName: selectedModel, conversationId: convId })
         });
 
         if (!streamRes.ok || !streamRes.body) {
@@ -370,7 +367,7 @@ export default function Chat({ setView }) {
       if (!isPremium) {
         setQueryCount(prev => ({ ...prev, [selectedModel]: (prev[selectedModel] || 0) + 1 }));
       }
-    } catch (err) {
+  } catch (err) {
       // If server enforced limit, show upgrade modal
       if (err?.response?.status === 402 || err?.response?.status === 403) {
         setShowUpgrade(true);
@@ -711,15 +708,7 @@ export default function Chat({ setView }) {
                   <div className='text-xs text-gray-500 dark:text-gray-400'>{hoveredBot.description}</div>
                 </div>
               )}
-              {selectedBot?.provider === 'imageai' && (
-                <label className={`flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 cursor-pointer hover:border-indigo-500 transition-all ${!isPremium ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  <svg className='w-5 h-5 text-gray-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' />
-                  </svg>
-                  <input type='file' accept='image/*' onChange={handleImageUpload} className='hidden' disabled={!isPremium} />
-                  <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>Upload Image {!isPremium && '🔒'}</span>
-                </label>
-              )}
+              {/* Removed topbar image upload (moved near send) */}
               {selectedBot?.provider === 'searchai' && (
                 <div className='flex-1 max-w-xl'>
                   <input
@@ -924,6 +913,18 @@ export default function Chat({ setView }) {
         {/* Input Area */}
   <div className='bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4'>
           <div className='max-w-4xl mx-auto'>
+            {/* Image preview (if any) */}
+            {selectedImagePreview && (
+              <div className='mb-2 flex items-center gap-3'>
+                <img src={selectedImagePreview} alt='Attachment preview' className='w-12 h-12 rounded object-cover border border-gray-200 dark:border-gray-700'/>
+                <button
+                  className='text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  onClick={() => { setSelectedImage(null); setSelectedImagePreview(null); }}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
             <div className='flex gap-2 sm:gap-3 items-end'>
               <div className='flex-1 relative'>
                 <textarea
@@ -945,6 +946,13 @@ export default function Chat({ setView }) {
               </div>
               {/* Voice Prompt Button Only */}
               <div className='flex flex-col gap-2 pb-2'>
+                {/* Attach image (available for all models) */}
+                <label className='bg-white dark:bg-gray-800 rounded-full p-2 sm:p-3 shadow border-2 border-gray-200 dark:border-gray-700 hover:border-indigo-500 transition-colors cursor-pointer flex items-center justify-center' title='Attach image'>
+                  <input type='file' accept='image/*' onChange={handleImageUpload} className='hidden' />
+                  <svg className='w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15.172 7l-6.586 6.586a2 2 0 102.828 2.828L19 8.828a4 4 0 10-5.656-5.656L5.757 10.757' />
+                  </svg>
+                </label>
                 <button
                   type='button'
                   className='bg-indigo-600 text-white rounded-full p-2 sm:p-3 shadow hover:bg-indigo-700 transition-colors flex items-center'
