@@ -5,7 +5,7 @@ import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
 import { User, Usage, Conversation, Message } from "../models/index.js";
-import { appConfig } from "../services/configService.js";
+import { appConfig, serverConfig } from "../services/configService.js";
 import { authRequired, premiumRequired } from "../middleware/auth.js";
 
 dotenv.config();
@@ -257,6 +257,20 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
   }
 });
 
+// Helper to extract useful error details safely for logging and debug responses
+function extractErrorInfo(err) {
+  const info = {
+    message: err?.message,
+    code: err?.code || err?.error?.code,
+    type: err?.type,
+    status: err?.status || err?.response?.status,
+  };
+  if (err?.response?.data) {
+    info.response = err.response.data;
+  }
+  return info;
+}
+
 // =====================================================
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
@@ -291,18 +305,28 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
     if (!b64) return res.status(500).json({ error: 'Image generation failed: empty response.' });
     return res.json({ url: `data:image/png;base64,${b64}` });
   } catch (err) {
-    if (err.code === "billing_hard_limit_reached") {
+    if (err?.code === "billing_hard_limit_reached") {
       return res.status(402).json({
         error:
           "Your OpenAI account has reached its billing limit. Please add funds or wait for the next billing cycle.",
       });
     }
 
-    console.error("❌ Image generation error:", err);
-    res.status(500).json({
-      error: "Image generation failed. Please verify your API key or prompt.",
-      details: err.message,
-    });
+    const errorId = `img_${Date.now()}`;
+    const info = extractErrorInfo(err);
+    console.error("❌ Image generation error:", { errorId, info, ctx: { size, quality, hasOpenAIKey: !!process.env.OPENAI_API_KEY } });
+
+    const isProd = (serverConfig?.nodeEnv || process.env.NODE_ENV) === 'production';
+    if (isProd) {
+      return res.status(info.status || 500).json({
+        error: "Image generation failed.",
+        errorId,
+        status: info.status || 500,
+        code: info.code || 'UNKNOWN',
+        message: info.message || 'An unexpected error occurred.'
+      });
+    }
+    return res.status(info.status || 500).json({ error: "Image generation failed.", errorId, ...info });
   }
 });
 
