@@ -268,14 +268,30 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       prompt = "Generate a creative image inspired by the uploaded photo.";
     }
 
-    const response = await openai.images.generate({
-      model: "gpt-image-1",
-      prompt,
-      n: 1,
-      size,
-      quality,
-      response_format: 'b64_json'
-    });
+    // Prefer GPT-5 if available; fallback to gpt-image-1 for compatibility
+    const primaryModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-5';
+    const fallbackModel = 'gpt-image-1';
+    let response;
+    try {
+      response = await openai.images.generate({
+        model: primaryModel,
+        prompt,
+        n: 1,
+        size,
+        quality,
+        response_format: 'b64_json'
+      });
+    } catch (e) {
+      // If GPT-5 (or custom) is not available, gracefully fall back
+      response = await openai.images.generate({
+        model: fallbackModel,
+        prompt,
+        n: 1,
+        size,
+        quality,
+        response_format: 'b64_json'
+      });
+    }
 
     const b64 = response?.data?.[0]?.b64_json;
     if (!b64) {
@@ -308,12 +324,25 @@ router.post("/audio", authRequired, premiumRequired, async (req, res) => {
     return res.status(400).json({ error: 'Text is required for TTS.' });
   }
   try {
-    const tts = await openai.audio.speech.create({
-      model: 'tts-1',
-      voice,
-      input: text,
-      format,
-    });
+    // Prefer GPT-5 (or configurable) for TTS if available; fallback to tts-1
+    const primaryTtsModel = process.env.OPENAI_TTS_MODEL || 'gpt-5';
+    const fallbackTtsModel = 'tts-1';
+    let tts;
+    try {
+      tts = await openai.audio.speech.create({
+        model: primaryTtsModel,
+        voice,
+        input: text,
+        format,
+      });
+    } catch (e) {
+      tts = await openai.audio.speech.create({
+        model: fallbackTtsModel,
+        voice,
+        input: text,
+        format,
+      });
+    }
     const buffer = Buffer.from(await tts.arrayBuffer());
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Content-Length', buffer.length);
