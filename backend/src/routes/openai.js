@@ -112,6 +112,115 @@ router.post("/chat", authRequired, async (req, res) => {
 });
 
 // =====================================================
+// 📝 STREAMING CHAT (chunked NDJSON over HTTP POST)
+// =====================================================
+router.post("/chat/stream", authRequired, async (req, res) => {
+  const { message, botName, conversationId } = req.body || {};
+
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: "Message is required." });
+  }
+
+  try {
+    const user = req.user;
+
+    // Ensure conversation exists or create
+    let conv = null;
+    if (conversationId) {
+      conv = await Conversation.findOne({ where: { id: conversationId, userId: user.id } });
+      if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+    } else {
+      conv = await Conversation.create({ userId: user.id, botName: botName || 'default', title: null });
+    }
+
+    // Enforce free-tier limit per user per bot for non-premium users
+    if (!user.isPremium) {
+      const FREE_LIMIT = (appConfig?.rateLimit?.freeUserLimit) || 5;
+      const [usage] = await Usage.findOrCreate({
+        where: { userId: user.id, botName: botName || 'default' },
+        defaults: { count: 0 }
+      });
+      if (usage.count >= FREE_LIMIT) {
+        return res.status(402).json({ error: `Free limit reached for ${botName || 'this bot'}.` });
+      }
+    }
+
+    // Persist user message
+    await Message.create({
+      conversationId: conv.id,
+      role: 'user',
+      content: message,
+      model: null,
+      type: 'text',
+      botName: botName || 'default'
+    });
+
+    // Auto-title conversation on first user message
+    if (!conv.title) {
+      const title = String(message).trim().slice(0, 60);
+      await conv.update({ title: title || `Chat ${conv.id}`, botName: botName || conv.botName });
+    }
+
+    // Prepare streaming headers (NDJSON)
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Send a start event
+    res.write(JSON.stringify({ type: 'start', conversationId: conv.id }) + "\n");
+
+    // NOTE: For now, route to OpenAI mini model. Future: map botName/provider to specific models.
+    const stream = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: message }],
+      stream: true,
+    });
+
+    let full = '';
+    for await (const part of stream) {
+      const delta = part?.choices?.[0]?.delta?.content || '';
+      if (!delta) continue;
+      full += delta;
+      res.write(JSON.stringify({ type: 'delta', text: delta }) + "\n");
+    }
+
+    // Increment usage (only after successful response) for non-premium users
+    if (!user.isPremium) {
+      await Usage.increment(
+        { count: 1 },
+        { where: { userId: user.id, botName: botName || 'default' } }
+      );
+      await Usage.update({ lastUsedAt: new Date() }, { where: { userId: user.id, botName: botName || 'default' } });
+    }
+
+    // Persist assistant message
+    await Message.create({
+      conversationId: conv.id,
+      role: 'assistant',
+      content: full,
+      model: 'gpt-4o-mini',
+      type: 'text',
+      botName: botName || 'default'
+    });
+
+    await conv.update({ updatedAt: new Date() });
+
+    // Final done event
+    res.write(JSON.stringify({ type: 'done', response: full, conversationId: conv.id }) + "\n");
+    res.end();
+  } catch (err) {
+    console.error('❌ Streaming chat error:', err);
+    try {
+      res.write(JSON.stringify({ type: 'error', error: 'Streaming failed' }) + "\n");
+    } catch {}
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Streaming failed' });
+    }
+    try { res.end(); } catch {}
+  }
+});
+
+// =====================================================
 // 🎙️ AUDIO TRANSCRIPTION ENDPOINT
 // =====================================================
 // Transcription (premium only)

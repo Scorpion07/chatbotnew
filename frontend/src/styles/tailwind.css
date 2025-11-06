@@ -8,6 +8,11 @@
 	background: #0b1020; /* deep slate */
 	color: #e5e7eb; /* gray-200 */
 }
+.provider-openai .hljs-keyword{ color:#34d399 }
+.provider-openai .hljs-title,.provider-openai .hljs-name{ color:#60a5fa }
+.provider-openai .hljs-string{ color:#fbbf24 }
+.provider-openai .hljs-number,.provider-openai .hljs-literal{ color:#f472b6 }
+.provider-openai .hljs-comment{ color:#9ca3af }
 .provider-openai pre {
 	border-radius: 10px;
 }
@@ -19,6 +24,11 @@
 	background: #0a2533; /* dark sky-ish */
 	color: #e6f6ff; /* very light sky */
 }
+.provider-google .hljs-keyword{ color:#38bdf8 }
+.provider-google .hljs-title,.provider-google .hljs-name{ color:#93c5fd }
+.provider-google .hljs-string{ color:#f59e0b }
+.provider-google .hljs-number,.provider-google .hljs-literal{ color:#22d3ee }
+.provider-google .hljs-comment{ color:#9ca3af }
 .provider-google .prose a {
 	color: #0ea5e9; /* sky-500 */
 }
@@ -27,6 +37,11 @@
 	background: #301a0f; /* warm dark */
 	color: #fdebd3; /* warm light */
 }
+.provider-anthropic .hljs-keyword{ color:#fb923c }
+.provider-anthropic .hljs-title,.provider-anthropic .hljs-name{ color:#fdba74 }
+.provider-anthropic .hljs-string{ color:#a3e635 }
+.provider-anthropic .hljs-number,.provider-anthropic .hljs-literal{ color:#f97316 }
+.provider-anthropic .hljs-comment{ color:#d6d3d1 }
 .provider-anthropic .prose a {
 	color: #f97316; /* orange-500 */
 }
@@ -35,6 +50,11 @@
 	background: #062b2b; /* teal-ish */
 	color: #e0ffff; /* aqua-ish */
 }
+.provider-deepai .hljs-keyword{ color:#22d3ee }
+.provider-deepai .hljs-title,.provider-deepai .hljs-name{ color:#67e8f9 }
+.provider-deepai .hljs-string{ color:#fde047 }
+.provider-deepai .hljs-number,.provider-deepai .hljs-literal{ color:#2dd4bf }
+.provider-deepai .hljs-comment{ color:#94a3b8 }
 .provider-deepai .prose a {
 	color: #06b6d4; /* cyan-500 */
 }
@@ -43,6 +63,11 @@
 	background: #0f0f10; /* near-black */
 	color: #e5e7eb; /* gray-200 */
 }
+.provider-x .hljs-keyword{ color:#94a3b8 }
+.provider-x .hljs-title,.provider-x .hljs-name{ color:#a3a3a3 }
+.provider-x .hljs-string{ color:#fbbf24 }
+.provider-x .hljs-number,.provider-x .hljs-literal{ color:#d1d5db }
+.provider-x .hljs-comment{ color:#6b7280 }
 .provider-x .prose a {
 	color: #9ca3af; /* gray-400 */
 }

@@ -4,9 +4,11 @@ import { getApiUrl } from '../config.js';
 import BotGrid from '../components/BotGrid.jsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import rehypeSanitize from 'rehype-sanitize';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import remarkEmoji from 'remark-emoji';
+import 'katex/dist/katex.min.css';
 
 export default function Chat({ setView }) {
   // Theme: persisted dark mode toggle
@@ -291,7 +293,7 @@ export default function Chat({ setView }) {
           };
         }
       } else {
-        // Call backend chat endpoint
+        // Call backend chat endpoint with streaming
         const token = localStorage.getItem('token');
         // Ensure we have a conversation id
         let convId = activeConversation;
@@ -304,21 +306,65 @@ export default function Chat({ setView }) {
             setActiveConversation(convId);
           } catch {}
         }
-        const res = await axios.post(getApiUrl('/api/openai/chat'), {
-          message: userMessage.content,
-          botName: selectedModel,
-          conversationId: convId
-        }, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        // Insert a placeholder assistant message we will stream-update
+        const placeholder = { role: 'assistant', content: '', model: modelLabel, type: 'text' };
+        setMessages(prev => [...prev, placeholder]);
+
+        // Start streaming
+        const streamRes = await fetch(getApiUrl('/api/openai/chat/stream'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ message: userMessage.content, botName: selectedModel, conversationId: convId })
         });
-        response = {
-          role: 'assistant',
-          content: res.data.response,
-          model: modelLabel,
-          type: 'text'
-        };
+
+        if (!streamRes.ok || !streamRes.body) {
+          throw new Error('Stream failed');
+        }
+
+        const reader = streamRes.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let acc = '';
+        let done = false;
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          if (value) {
+            acc += decoder.decode(value, { stream: true });
+            let nlIndex;
+            while ((nlIndex = acc.indexOf('\n')) >= 0) {
+              const line = acc.slice(0, nlIndex).trim();
+              acc = acc.slice(nlIndex + 1);
+              if (!line) continue;
+              try {
+                const evt = JSON.parse(line);
+                if (evt.type === 'delta' && evt.text) {
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    // find last assistant placeholder
+                    for (let i = updated.length - 1; i >= 0; i--) {
+                      if (updated[i].role === 'assistant' && updated[i].type === 'text') {
+                        updated[i] = { ...updated[i], content: (updated[i].content || '') + evt.text };
+                        break;
+                      }
+                    }
+                    return updated;
+                  });
+                } else if (evt.type === 'done') {
+                  // Optionally handle sources if provided later
+                }
+              } catch { /* ignore parse errors */ }
+            }
+          }
+        }
+        // No additional response push; placeholder has been filled progressively
+        response = null;
       }
-      setMessages(prev => [...prev, response]);
+      if (response) {
+        setMessages(prev => [...prev, response]);
+      }
       
       // Increment local display count for free users (server is source of truth)
       if (!isPremium) {
@@ -772,8 +818,8 @@ export default function Chat({ setView }) {
                       )}
                       <div className='prose prose-slate dark:prose-invert max-w-none'>
                       <ReactMarkdown
-                        remarkPlugins={[remarkGfm, [remarkEmoji, { emoticon: true }]]}
-                        rehypePlugins={[rehypeSanitize, rehypeHighlight]}
+                        remarkPlugins={[remarkGfm, remarkMath, [remarkEmoji, { emoticon: true }]]}
+                        rehypePlugins={[rehypeKatex, rehypeHighlight]}
                         components={{
                           code({node, inline, className, children, ...props}) {
                             const match = /language-(\w+)/.exec(className || '');
@@ -811,6 +857,20 @@ export default function Chat({ setView }) {
                       >
                         {message.content}
                       </ReactMarkdown>
+                      {/* Inline citations/cards (Gemini-like) */}
+                      {Array.isArray(message.sources) && message.sources.length > 0 && (
+                        <div className='mt-3 border-t border-gray-200 dark:border-gray-700 pt-2'>
+                          <div className='text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2'>Sources</div>
+                          <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
+                            {message.sources.map((src, i) => (
+                              <a key={i} href={src.url} target='_blank' rel='noreferrer' className='block p-2 rounded-lg bg-white/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 transition-colors'>
+                                <div className='text-sm font-medium text-indigo-600 dark:text-indigo-400 truncate'>{src.title || src.url}</div>
+                                {src.snippet && <div className='text-xs text-gray-600 dark:text-gray-400 line-clamp-2'>{src.snippet}</div>}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       </div>
                     </>
                   )}
