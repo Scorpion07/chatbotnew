@@ -5,6 +5,7 @@ import BotGrid from '../components/BotGrid.jsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
+import rehypeHighlight from 'rehype-highlight';
 import remarkEmoji from 'remark-emoji';
 
 export default function Chat({ setView }) {
@@ -85,11 +86,17 @@ export default function Chat({ setView }) {
   const selectedBot = bots.find(b => b.name === selectedModel);
   const modelLabel = selectedBot?.model || selectedModel;
   const provider = selectedBot?.provider || 'default';
-  const assistantAccent = provider === 'openai'
-    ? 'border-l-4 border-emerald-500/70'
+  // Assistant theme approximations (no proprietary assets)
+  const assistantBg = provider === 'openai'
+    ? 'bg-gray-50 dark:bg-[#212327]'
     : provider === 'google'
-    ? 'border-l-4 border-sky-500/70'
-    : 'border-l-4 border-indigo-500/60';
+    ? 'bg-sky-50 dark:bg-sky-900/20'
+    : 'bg-white dark:bg-gray-800';
+  const assistantBorder = provider === 'openai'
+    ? 'border border-gray-200 dark:border-gray-700'
+    : provider === 'google'
+    ? 'border border-sky-100 dark:border-sky-800/40'
+    : 'border border-gray-200 dark:border-gray-700';
 
   // Utils: copy to clipboard
   const copyToClipboard = async (text) => {
@@ -665,17 +672,17 @@ export default function Chat({ setView }) {
         {/* Messages */}
         <div className='flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6'>
           {messages.map((message, index) => (
-            <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'}`}>
               {message.role === 'assistant' && (
                 <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br ${selectedModelData?.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
                   <span className='text-lg sm:text-xl'>{selectedModelData?.icon}</span>
                 </div>
               )}
-              <div className={`max-w-xs sm:max-w-md md:max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
-                <div className={`px-3 sm:px-5 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-sm sm:text-base ${
+              <div className={`w-full max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
+                <div className={`px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base ${
                   message.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none'
-                    : `bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 rounded-tl-none shadow-sm ${assistantAccent} pl-4 sm:pl-5`
+                    : `${assistantBg} ${assistantBorder} text-gray-800 dark:text-gray-100 rounded-tl-none shadow-sm`
                 }`}>
                   {message.type === 'image' ? (
                     <div className='space-y-2 sm:space-y-3'>
@@ -710,7 +717,7 @@ export default function Chat({ setView }) {
                     <div className='prose prose-slate dark:prose-invert max-w-none'>
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm, [remarkEmoji, { emoticon: true }]]}
-                        rehypePlugins={[rehypeSanitize]}
+                        rehypePlugins={[rehypeSanitize, rehypeHighlight]}
                         components={{
                           code({node, inline, className, children, ...props}) {
                             const match = /language-(\w+)/.exec(className || '');
@@ -729,7 +736,7 @@ export default function Chat({ setView }) {
                                 >
                                   Copy
                                 </button>
-                                <pre className='bg-gray-900 text-gray-100 rounded-lg p-3 overflow-auto text-sm'>
+                                <pre className='bg-gray-900 text-gray-100 rounded-lg p-3 overflow-auto text-sm hljs'>
                                   <code className={className} {...props}>{children}</code>
                                 </pre>
                               </div>
@@ -751,16 +758,22 @@ export default function Chat({ setView }) {
                     </div>
                   )}
                 </div>
-                <div className={`text-xs text-gray-500 dark:text-gray-400 mt-1 px-2 flex items-center gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {message.role === 'assistant' && `${message.model} • `}
-                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  {message.role === 'assistant' && (
-                    <button
-                      onClick={() => copyToClipboard(message.content)}
-                      className='px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-[11px]'
-                    >
-                      Copy
-                    </button>
+                <div className={`text-xs text-gray-500 dark:text-gray-400 mt-1 px-2 flex items-center gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-between'} max-w-3xl`}>        
+                  {message.role === 'assistant' ? (
+                    <>
+                      <span className='truncate'>{message.model} • {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <div className='flex items-center gap-1'>
+                        <button onClick={() => copyToClipboard(message.content)} className='px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-[11px]' title='Copy'>Copy</button>
+                        <button className='p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800' title='Like' aria-label='Like'>
+                          <svg className='w-4 h-4 text-gray-500' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M14 9l-2 6-2-6m-2 0h8l-4-4-4 4z'/></svg>
+                        </button>
+                        <button className='p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800' title='Dislike' aria-label='Dislike'>
+                          <svg className='w-4 h-4 text-gray-500' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10 15l2-6 2 6m2 0H8l4 4 4-4z'/></svg>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   )}
                 </div>
               </div>
