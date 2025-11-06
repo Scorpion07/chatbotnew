@@ -1,6 +1,7 @@
 import express from "express";
 import OpenAI from "openai";
 import fetch from 'node-fetch';
+import axios from 'axios';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import multer from "multer";
 import fs from "fs";
@@ -178,7 +179,6 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     // Send a start event
     res.write(JSON.stringify({ type: 'start', conversationId: conv.id }) + "\n");
 
-    // NOTE: For now, route to OpenAI mini model. Future: map botName/provider to specific models.
     if (!openai) {
       res.write(JSON.stringify({ type: 'error', error: 'OpenAI is not configured on the server' }) + "\n");
       return res.end();
@@ -268,93 +268,43 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  let { prompt, size = "512x512", quality = "standard" } = req.body || {};
-
-  if (!prompt) {
-    return res.status(400).json({ error: "Prompt is required." });
-  }
-
   try {
+    let { prompt } = req.body || {};
+    if (!prompt || typeof prompt !== 'string') {
+      return res.status(400).json({ error: 'Prompt is required.' });
+    }
+
     // Clean up prompt: remove markdown or base64 image text
-    prompt = prompt.replace(/!\[.*?\]\(.*?\)/g, "").trim();
-    if (prompt === "") {
-      prompt = "Generate a creative image inspired by the uploaded photo.";
+    prompt = prompt.replace(/!\[.*?\]\(.*?\)/g, '').trim();
+    if (prompt === '') {
+      prompt = 'Generate a creative image';
     }
 
-    // If PenAPI is configured, use it first (simple, minimal link)
-    if (PENAPI_BASE) {
-      try {
-        const r = await fetch(`${PENAPI_BASE.replace(/\/$/, '')}/image`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(PENAPI_KEY ? { Authorization: `Bearer ${PENAPI_KEY}` } : {})
-          },
-          body: JSON.stringify({ prompt, size, quality })
-        });
-        if (!r.ok) {
-          const txt = await r.text().catch(() => '');
-          throw new Error(`PenAPI image error: ${r.status} ${txt}`);
-        }
-        const data = await r.json();
-        // Accept flexible shapes: {url} or {b64|base64} or {data:[{url}]}
-        const url = data.url || data.imageUrl || data.image_url || (data.data && data.data[0] && data.data[0].url);
-        const b64 = data.b64 || data.base64 || (data.data && data.data[0] && (data.data[0].b64 || data.data[0].base64));
-        if (url) return res.json({ url });
-        if (b64) return res.json({ url: `data:image/png;base64,${b64}` });
-        return res.status(500).json({ error: 'PenAPI: unexpected response' });
-      } catch (e) {
-        console.error('❌ PenAPI image error, falling back to OpenAI:', e.message);
-        // fall through to OpenAI fallback
-      }
+    // Call Gemini Images REST API (gemini-1.5-flash:generateImage)
+    const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    if (!GEMINI_KEY) {
+      return res.status(500).json({ error: 'Gemini API key is not configured on the server.' });
     }
-
-    // Gemini image generation (replace OpenAI fallback)
-    if (!geminiModel) {
-      return res.status(500).json({ error: 'Gemini is not configured and PenAPI failed/unset.' });
-    }
-    try {
-      // Preferred: SDK method if available
-      if (typeof geminiModel.generateImage === 'function') {
-        const result = await geminiModel.generateImage({ prompt, size: '1024x1024' });
-        const gUrl = result?.data?.[0]?.url || result?.imageUrl;
-        const gB64 = result?.data?.[0]?.b64 || result?.data?.[0]?.base64 || result?.b64;
-        if (gUrl) return res.json({ url: gUrl });
-        if (gB64) return res.json({ url: `data:image/png;base64,${gB64}` });
-      }
-      // Fallback: REST Images API (broad parsing for schema changes)
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/images:generate?key=${process.env.GOOGLE_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, n: 1, size: '1024x1024' })
-      });
-      if (!resp.ok) {
-        const txt = await resp.text().catch(() => '');
-        throw new Error(`Gemini Images error: ${resp.status} ${txt}`);
-      }
-      const data = await resp.json();
-      const url = data?.url || data?.imageUrl || data?.image_url || data?.images?.[0]?.url || data?.data?.[0]?.url;
-      const b64 = data?.b64 || data?.base64 || data?.images?.[0]?.b64 || data?.images?.[0]?.base64 || data?.data?.[0]?.b64 || data?.data?.[0]?.b64_json || data?.candidates?.[0]?.content?.parts?.find(p => p?.inlineData)?.inlineData?.data;
-      if (url) return res.json({ url });
-      if (b64) return res.json({ url: `data:image/png;base64,${b64}` });
-      return res.status(500).json({ error: 'Gemini image generation returned empty response.' });
-    } catch (e) {
-      console.error('❌ Gemini Image Error:', e);
-      return res.status(500).json({ error: 'Gemini image generation failed' });
-    }
-  } catch (err) {
-    if (err.code === "billing_hard_limit_reached") {
-      return res.status(402).json({
-        error:
-          "Your OpenAI account has reached its billing limit. Please add funds or wait for the next billing cycle.",
-      });
-    }
-
-    console.error("❌ Image generation error:", err);
-    res.status(500).json({
-      error: "Image generation failed. Please verify your API key or prompt.",
-      details: err.message,
+    const response = await axios({
+      method: 'post',
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateImage?key=${GEMINI_KEY}`,
+      headers: { 'Content-Type': 'application/json' },
+      data: { prompt }
     });
+
+    const base64 = response?.data?.images?.[0]?.data
+      || response?.data?.data?.[0]?.b64
+      || response?.data?.data?.[0]?.b64_json
+      || response?.data?.candidates?.[0]?.content?.parts?.find(p => p?.inlineData)?.inlineData?.data;
+
+    if (!base64) {
+      return res.status(500).json({ error: 'No image returned from Gemini' });
+    }
+
+    return res.json({ url: `data:image/png;base64,${base64}` });
+  } catch (err) {
+    console.error('❌ Gemini Image Error:', err?.response?.data || err.message || err);
+    return res.status(500).json({ error: 'Gemini image generation failed' });
   }
 });
 
