@@ -1,13 +1,10 @@
 import express from "express";
 import OpenAI from "openai";
-import fetch from 'node-fetch';
-import axios from 'axios';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
 import { User, Usage, Conversation, Message } from "../models/index.js";
-import { appConfig } from "../services/configService.js";
+import { appConfig, apiKeys } from "../services/configService.js";
 import { authRequired, premiumRequired } from "../middleware/auth.js";
 
 dotenv.config();
@@ -18,20 +15,16 @@ const router = express.Router();
 // ✅ Multer setup for file uploads
 const upload = multer({ dest: "uploads/" });
 
-// ✅ Initialize OpenAI client if available (don't crash if missing)
-const HAS_OPENAI_KEY = !!process.env.OPENAI_API_KEY;
-if (!HAS_OPENAI_KEY) {
-  console.warn("⚠️ OPENAI_API_KEY is not set. Chat and OpenAI fallbacks will be unavailable.");
+// ✅ Validate API key
+if (!process.env.OPENAI_API_KEY) {
+  console.error("❌ Missing OPENAI_API_KEY in environment variables.");
+  process.exit(1);
 }
-const openai = HAS_OPENAI_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
-// Optional external provider (PenAPI) passthrough
-const PENAPI_BASE = process.env.PENAPI_BASE_URL || '';
-const PENAPI_KEY = process.env.PENAPI_KEY || '';
-const HAS_GOOGLE_KEY = !!process.env.GOOGLE_API_KEY;
-const genAI = HAS_GOOGLE_KEY ? new GoogleGenerativeAI(process.env.GOOGLE_API_KEY) : null;
-const GEMINI_IMAGE_MODEL = process.env.GOOGLE_IMAGE_MODEL || 'gemini-pro-vision';
-const geminiModel = genAI ? genAI.getGenerativeModel({ model: GEMINI_IMAGE_MODEL }) : null;
+// ✅ Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // =====================================================
 // 🧠 TEXT CHAT ENDPOINT (with auth and free-tier limit)
@@ -83,9 +76,6 @@ router.post("/chat", authRequired, async (req, res) => {
       await conv.update({ title: title || `Chat ${conv.id}`, botName: botName || conv.botName });
     }
 
-    if (!openai) {
-      return res.status(500).json({ error: 'OpenAI is not configured on the server' });
-    }
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: message }],
@@ -179,10 +169,7 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     // Send a start event
     res.write(JSON.stringify({ type: 'start', conversationId: conv.id }) + "\n");
 
-    if (!openai) {
-      res.write(JSON.stringify({ type: 'error', error: 'OpenAI is not configured on the server' }) + "\n");
-      return res.end();
-    }
+    // NOTE: For now, route to OpenAI mini model. Future: map botName/provider to specific models.
     const stream = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: message }],
@@ -268,44 +255,76 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
+  let { prompt, size = "512x512", quality = "standard" } = req.body || {};
+
+  if (!prompt) {
+    return res.status(400).json({ error: "Prompt is required." });
+  }
+
   try {
-    const prompt = req.body?.prompt;
-    if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({ error: 'Prompt is required.' });
+    // Clean up prompt: remove markdown or base64 image text
+    prompt = prompt.replace(/!\[.*?\]\(.*?\)/g, "").trim();
+    if (prompt === "") {
+      prompt = "Generate a creative image inspired by the uploaded photo.";
     }
 
-    const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
-    if (!STABILITY_API_KEY) {
-      return res.status(500).json({ error: 'Stable Diffusion API key is not configured on the server.' });
-    }
+    // Prefer Stability if key is configured
+    if (apiKeys.stability) {
+      const endpoint = "https://api.stability.ai/v2beta/stable-image/generate/core";
+      const form = new FormData();
+      form.append("prompt", prompt);
+      form.append("output_format", "png");
+      // Optionally hint size via aspect ratio; default to 1:1
+      const aspect = size === '1024x1024' || size === '512x512' ? '1:1' : (size === '1024x576' ? '16:9' : '1:1');
+      form.append("aspect_ratio", aspect);
 
-    const response = await axios.post(
-      'https://api.stability.ai/v2beta/stable-image/generate/sd3',
-      {
-        prompt,
-        output_format: 'png',
-      },
-      {
+      const resp = await fetch(endpoint, {
+        method: 'POST',
         headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${STABILITY_API_KEY}`,
-          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKeys.stability}`,
+          'Accept': 'image/*'
         },
+        body: form
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        console.error('Stability image error:', resp.status, text);
+        return res.status(500).json({ error: 'Stability image generation failed', details: text });
       }
-    );
-
-    const base64Image = response?.data?.image;
-
-    if (!base64Image) {
-      return res.status(500).json({ error: 'No image returned from Stable Diffusion' });
+      const arrayBuf = await resp.arrayBuffer();
+      const b64 = Buffer.from(arrayBuf).toString('base64');
+      return res.json({ url: `data:image/png;base64,${b64}` });
     }
 
-    const dataUrl = `data:image/png;base64,${base64Image}`;
-    // Return both 'image' and 'url' for compatibility with existing frontend consumers.
-    return res.json({ success: true, image: dataUrl, url: dataUrl });
+    // Fallback to OpenAI if Stability not configured
+    const response = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt,
+      n: 1,
+      size,
+      quality,
+      response_format: 'b64_json'
+    });
+
+    const b64 = response?.data?.[0]?.b64_json;
+    if (!b64) {
+      return res.status(500).json({ error: 'Image generation failed: empty response.' });
+    }
+    const dataUrl = `data:image/png;base64,${b64}`;
+    res.json({ url: dataUrl });
   } catch (err) {
-    console.error('Stable Diffusion Image Error:', err?.response?.data || err);
-    return res.status(500).json({ error: 'Stable Diffusion image generation failed' });
+    if (err.code === "billing_hard_limit_reached") {
+      return res.status(402).json({
+        error:
+          "Your OpenAI account has reached its billing limit. Please add funds or wait for the next billing cycle.",
+      });
+    }
+
+    console.error("❌ Image generation error:", err);
+    res.status(500).json({
+      error: "Image generation failed. Please verify your API key or prompt.",
+      details: err.message,
+    });
   }
 });
 
@@ -313,57 +332,44 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
 // 🔊 TEXT-TO-SPEECH (TTS) ENDPOINT (premium only)
 // =====================================================
 router.post("/audio", authRequired, premiumRequired, async (req, res) => {
-  const { text, voice = 'alloy', format = 'mp3' } = req.body || {};
+  const { text, format = 'mp3', duration = 10 } = req.body || {};
   if (!text || typeof text !== 'string') {
-    return res.status(400).json({ error: 'Text is required for TTS.' });
+    return res.status(400).json({ error: 'Text is required for audio generation.' });
   }
   try {
-    // If PenAPI is configured, use it first
-    if (PENAPI_BASE) {
-      try {
-        const r = await fetch(`${PENAPI_BASE.replace(/\/$/, '')}/audio/tts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(PENAPI_KEY ? { Authorization: `Bearer ${PENAPI_KEY}` } : {})
-          },
-          body: JSON.stringify({ text, voice, format })
-        });
-        if (!r.ok) {
-          const txt = await r.text().catch(() => '');
-          throw new Error(`PenAPI TTS error: ${r.status} ${txt}`);
-        }
-        // Accept either binary stream or JSON with base64
-        const contentType = r.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const data = await r.json();
-          const b64 = data.audio || data.base64 || data.b64;
-          if (!b64) return res.status(500).json({ error: 'PenAPI TTS: no audio base64' });
-          const buffer = Buffer.from(b64, 'base64');
-          res.setHeader('Content-Type', 'audio/mpeg');
-          res.setHeader('Content-Length', buffer.length);
-          return res.send(buffer);
-        } else {
-          const arrayBuf = await r.arrayBuffer();
-          const buffer = Buffer.from(arrayBuf);
-          res.setHeader('Content-Type', 'audio/mpeg');
-          res.setHeader('Content-Length', buffer.length);
-          return res.send(buffer);
-        }
-      } catch (e) {
-        console.error('❌ PenAPI TTS error, falling back to OpenAI:', e.message);
-        // fall through to OpenAI fallback
+    if (apiKeys.stability) {
+      // Generate music/audio from text via Stability (Stable Audio)
+      const endpoint = 'https://api.stability.ai/v2beta/audio/text-to-music';
+      const body = {
+        prompt: text,
+        duration: Math.max(1, Math.min(90, parseInt(duration) || 10)),
+        format
+      };
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKeys.stability}`,
+          'Content-Type': 'application/json',
+          'Accept': 'audio/*'
+        },
+        body: JSON.stringify(body)
+      });
+      if (!resp.ok) {
+        const textErr = await resp.text();
+        console.error('Stability audio error:', resp.status, textErr);
+        return res.status(500).json({ error: 'Stability audio generation failed', details: textErr });
       }
+      const arrayBuf = await resp.arrayBuffer();
+      const buffer = Buffer.from(arrayBuf);
+      res.setHeader('Content-Type', format === 'wav' ? 'audio/wav' : 'audio/mpeg');
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
     }
 
-    // OpenAI fallback (stable)
-    if (!openai) {
-      return res.status(500).json({ error: 'OpenAI fallback unavailable and PenAPI failed/unset.' });
-    }
-    const ttsModel = process.env.OPENAI_TTS_MODEL || 'tts-1';
+    // Fallback to OpenAI TTS if Stability not configured
     const tts = await openai.audio.speech.create({
-      model: ttsModel,
-      voice,
+      model: 'tts-1',
+      voice: 'alloy',
       input: text,
       format,
     });
@@ -372,8 +378,8 @@ router.post("/audio", authRequired, premiumRequired, async (req, res) => {
     res.setHeader('Content-Length', buffer.length);
     return res.send(buffer);
   } catch (err) {
-    console.error('❌ TTS error:', err);
-    return res.status(500).json({ error: 'Failed to synthesize speech.' });
+    console.error('❌ Audio generation error:', err);
+    return res.status(500).json({ error: 'Failed to generate audio.' });
   }
 });
 
