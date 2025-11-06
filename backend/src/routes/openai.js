@@ -5,7 +5,7 @@ import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
 import { User, Usage, Conversation, Message } from "../models/index.js";
-import { appConfig, serverConfig } from "../services/configService.js";
+import { appConfig } from "../services/configService.js";
 import { authRequired, premiumRequired } from "../middleware/auth.js";
 
 dotenv.config();
@@ -23,7 +23,9 @@ if (!HAS_OPENAI_KEY) {
 }
 const openai = HAS_OPENAI_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
-// External providers are disabled (keep defaults simple with OpenAI only)
+// Optional external provider (PenAPI) passthrough
+const PENAPI_BASE = process.env.PENAPI_BASE_URL || '';
+const PENAPI_KEY = process.env.PENAPI_KEY || '';
 
 // =====================================================
 // 🧠 TEXT CHAT ENDPOINT (with auth and free-tier limit)
@@ -257,20 +259,6 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
   }
 });
 
-// Helper to extract useful error details safely for logging and debug responses
-function extractErrorInfo(err) {
-  const info = {
-    message: err?.message,
-    code: err?.code || err?.error?.code,
-    type: err?.type,
-    status: err?.status || err?.response?.status,
-  };
-  if (err?.response?.data) {
-    info.response = err.response.data;
-  }
-  return info;
-}
-
 // =====================================================
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
@@ -288,47 +276,63 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       prompt = "Generate a creative image inspired by the uploaded photo.";
     }
 
-    // OpenAI (default)
-    if (!openai) {
-      return res.status(500).json({ error: 'Server is not configured with OPENAI_API_KEY' });
+    // If PenAPI is configured, use it first (simple, minimal link)
+    if (PENAPI_BASE) {
+      try {
+        const r = await fetch(`${PENAPI_BASE.replace(/\/$/, '')}/image`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(PENAPI_KEY ? { Authorization: `Bearer ${PENAPI_KEY}` } : {})
+          },
+          body: JSON.stringify({ prompt, size, quality })
+        });
+        if (!r.ok) {
+          const txt = await r.text().catch(() => '');
+          throw new Error(`PenAPI image error: ${r.status} ${txt}`);
+        }
+        const data = await r.json();
+        // Accept flexible shapes: {url} or {b64|base64} or {data:[{url}]}
+        const url = data.url || data.imageUrl || data.image_url || (data.data && data.data[0] && data.data[0].url);
+        const b64 = data.b64 || data.base64 || (data.data && data.data[0] && (data.data[0].b64 || data.data[0].base64));
+        if (url) return res.json({ url });
+        if (b64) return res.json({ url: `data:image/png;base64,${b64}` });
+        return res.status(500).json({ error: 'PenAPI: unexpected response' });
+      } catch (e) {
+        console.error('❌ PenAPI image error, falling back to OpenAI:', e.message);
+        // fall through to OpenAI fallback
+      }
     }
-    const model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
+
+    // OpenAI fallback (kept simple and stable)
+    if (!openai) {
+      return res.status(500).json({ error: 'OpenAI fallback unavailable and PenAPI failed/unset.' });
+    }
+    const fallbackModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
     const response = await openai.images.generate({
-      model,
+      model: fallbackModel,
       prompt,
       n: 1,
       size,
-      quality
+      quality,
+      response_format: 'b64_json'
     });
-    const first = response?.data?.[0] || {};
-    const url = first.url;
-    const b64 = first.b64_json;
-    if (url) return res.json({ url });
-    if (b64) return res.json({ url: `data:image/png;base64,${b64}` });
-    return res.status(500).json({ error: 'Image generation failed: empty response.' });
+    const b64 = response?.data?.[0]?.b64_json;
+    if (!b64) return res.status(500).json({ error: 'Image generation failed: empty response.' });
+    return res.json({ url: `data:image/png;base64,${b64}` });
   } catch (err) {
-    if (err?.code === "billing_hard_limit_reached") {
+    if (err.code === "billing_hard_limit_reached") {
       return res.status(402).json({
         error:
           "Your OpenAI account has reached its billing limit. Please add funds or wait for the next billing cycle.",
       });
     }
 
-    const errorId = `img_${Date.now()}`;
-    const info = extractErrorInfo(err);
-    console.error("❌ Image generation error:", { errorId, info, ctx: { size, quality, hasOpenAIKey: !!process.env.OPENAI_API_KEY } });
-
-    const isProd = (serverConfig?.nodeEnv || process.env.NODE_ENV) === 'production';
-    if (isProd) {
-      return res.status(info.status || 500).json({
-        error: "Image generation failed.",
-        errorId,
-        status: info.status || 500,
-        code: info.code || 'UNKNOWN',
-        message: info.message || 'An unexpected error occurred.'
-      });
-    }
-    return res.status(info.status || 500).json({ error: "Image generation failed.", errorId, ...info });
+    console.error("❌ Image generation error:", err);
+    res.status(500).json({
+      error: "Image generation failed. Please verify your API key or prompt.",
+      details: err.message,
+    });
   }
 });
 
@@ -341,9 +345,47 @@ router.post("/audio", authRequired, premiumRequired, async (req, res) => {
     return res.status(400).json({ error: 'Text is required for TTS.' });
   }
   try {
-    // OpenAI (default)
+    // If PenAPI is configured, use it first
+    if (PENAPI_BASE) {
+      try {
+        const r = await fetch(`${PENAPI_BASE.replace(/\/$/, '')}/audio/tts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(PENAPI_KEY ? { Authorization: `Bearer ${PENAPI_KEY}` } : {})
+          },
+          body: JSON.stringify({ text, voice, format })
+        });
+        if (!r.ok) {
+          const txt = await r.text().catch(() => '');
+          throw new Error(`PenAPI TTS error: ${r.status} ${txt}`);
+        }
+        // Accept either binary stream or JSON with base64
+        const contentType = r.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await r.json();
+          const b64 = data.audio || data.base64 || data.b64;
+          if (!b64) return res.status(500).json({ error: 'PenAPI TTS: no audio base64' });
+          const buffer = Buffer.from(b64, 'base64');
+          res.setHeader('Content-Type', 'audio/mpeg');
+          res.setHeader('Content-Length', buffer.length);
+          return res.send(buffer);
+        } else {
+          const arrayBuf = await r.arrayBuffer();
+          const buffer = Buffer.from(arrayBuf);
+          res.setHeader('Content-Type', 'audio/mpeg');
+          res.setHeader('Content-Length', buffer.length);
+          return res.send(buffer);
+        }
+      } catch (e) {
+        console.error('❌ PenAPI TTS error, falling back to OpenAI:', e.message);
+        // fall through to OpenAI fallback
+      }
+    }
+
+    // OpenAI fallback (stable)
     if (!openai) {
-      return res.status(500).json({ error: 'Server is not configured with OPENAI_API_KEY' });
+      return res.status(500).json({ error: 'OpenAI fallback unavailable and PenAPI failed/unset.' });
     }
     const ttsModel = process.env.OPENAI_TTS_MODEL || 'tts-1';
     const tts = await openai.audio.speech.create({
