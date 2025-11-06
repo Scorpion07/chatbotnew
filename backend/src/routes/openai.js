@@ -274,43 +274,38 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       return res.status(400).json({ error: 'Prompt is required.' });
     }
 
-    const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    if (!GEMINI_KEY) {
-      return res.status(500).json({ error: 'Gemini API key is not configured on the server.' });
+    const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
+    if (!STABILITY_API_KEY) {
+      return res.status(500).json({ error: 'Stable Diffusion API key is not configured on the server.' });
     }
 
-    const response = await axios({
-      method: 'post',
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${GEMINI_KEY}`,
-      headers: { 'Content-Type': 'application/json' },
-      data: {
-        contents: [
-          {
-            parts: [
-              {
-                text: `Generate a realistic image based on this description: ${prompt}`
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          responseMimeType: 'image/png'
-        }
+    const response = await axios.post(
+      'https://api.stability.ai/v2beta/stable-image/generate/sd3',
+      {
+        prompt,
+        output_format: 'png',
+      },
+      {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${STABILITY_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
       }
-    });
+    );
 
-    const base64Image = response?.data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    const base64Image = response?.data?.image;
 
     if (!base64Image) {
-      return res.status(500).json({ error: 'No image returned from Gemini' });
+      return res.status(500).json({ error: 'No image returned from Stable Diffusion' });
     }
 
     const dataUrl = `data:image/png;base64,${base64Image}`;
-    // Preserve backward compatibility with existing frontend ('url') while also returning 'image' and 'success'.
+    // Return both 'image' and 'url' for compatibility with existing frontend consumers.
     return res.json({ success: true, image: dataUrl, url: dataUrl });
   } catch (err) {
-    console.error('Gemini Image Error:', err?.response?.data || err);
-    return res.status(500).json({ error: 'Gemini image generation failed' });
+    console.error('Stable Diffusion Image Error:', err?.response?.data || err);
+    return res.status(500).json({ error: 'Stable Diffusion image generation failed' });
   }
 });
 
