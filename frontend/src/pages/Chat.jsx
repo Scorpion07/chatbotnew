@@ -731,7 +731,7 @@ export default function Chat({ setView }) {
                 <div className={`px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base ${
                   message.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none'
-                    : `${PT.bgLight} ${PT.bgDark} border ${PT.borderLight} ${PT.borderDark} text-gray-800 dark:text-gray-100 rounded-tl-none shadow-sm`
+                    : `${PT.bgLight} ${PT.bgDark} border ${PT.borderLight} ${PT.borderDark} text-gray-800 dark:text-gray-100 rounded-tl-none shadow-sm provider-${provider}`
                 }`}>
                   {message.type === 'image' ? (
                     <div className='space-y-2 sm:space-y-3'>

@@ -2,3 +2,56 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Provider-specific code theme accents (kept minimal and safe) */
+.provider-openai .hljs {
+	background: #0b1020; /* deep slate */
+	color: #e5e7eb; /* gray-200 */
+}
+.provider-openai pre {
+	border-radius: 10px;
+}
+.provider-openai .prose a {
+	color: #10b981; /* emerald-500 */
+}
+
+.provider-google .hljs {
+	background: #0a2533; /* dark sky-ish */
+	color: #e6f6ff; /* very light sky */
+}
+.provider-google .prose a {
+	color: #0ea5e9; /* sky-500 */
+}
+
+.provider-anthropic .hljs {
+	background: #301a0f; /* warm dark */
+	color: #fdebd3; /* warm light */
+}
+.provider-anthropic .prose a {
+	color: #f97316; /* orange-500 */
+}
+
+.provider-deepai .hljs {
+	background: #062b2b; /* teal-ish */
+	color: #e0ffff; /* aqua-ish */
+}
+.provider-deepai .prose a {
+	color: #06b6d4; /* cyan-500 */
+}
+
+.provider-x .hljs {
+	background: #0f0f10; /* near-black */
+	color: #e5e7eb; /* gray-200 */
+}
+.provider-x .prose a {
+	color: #9ca3af; /* gray-400 */
+}
+
+/* Keep tables readable inside bubbles on mobile */
+.provider-openai .prose table,
+.provider-google .prose table,
+.provider-anthropic .prose table,
+.provider-deepai .prose table,
+.provider-x .prose table {
+	width: 100%;
+}
