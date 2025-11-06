@@ -15,22 +15,21 @@ const router = express.Router();
 // ✅ Multer setup for file uploads
 const upload = multer({ dest: "uploads/" });
 
-// ✅ Validate API key (do NOT crash server; degrade gracefully)
-const OPENAI_ENABLED = !!process.env.OPENAI_API_KEY;
-if (!OPENAI_ENABLED) {
-  console.warn("⚠️  OPENAI_API_KEY not set. OpenAI features are disabled.");
+// ✅ Validate API key
+if (!process.env.OPENAI_API_KEY) {
+  console.error("❌ Missing OPENAI_API_KEY in environment variables.");
+  process.exit(1);
 }
 
-// ✅ Initialize OpenAI client only if key provided
-const openai = OPENAI_ENABLED ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+// ✅ Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // =====================================================
 // 🧠 TEXT CHAT ENDPOINT (with auth and free-tier limit)
 // =====================================================
 router.post("/chat", authRequired, async (req, res) => {
-  if (!OPENAI_ENABLED) {
-    return res.status(503).json({ error: "OpenAI is not configured on the server." });
-  }
   const { message, botName, conversationId } = req.body;
 
   if (!message) {
@@ -116,9 +115,6 @@ router.post("/chat", authRequired, async (req, res) => {
 // 📝 STREAMING CHAT (chunked NDJSON over HTTP POST)
 // =====================================================
 router.post("/chat/stream", authRequired, async (req, res) => {
-  if (!OPENAI_ENABLED) {
-    return res.status(503).json({ error: "OpenAI is not configured on the server." });
-  }
   const { message, botName, conversationId } = req.body || {};
 
   if (!message || typeof message !== 'string') {
@@ -229,9 +225,6 @@ router.post("/chat/stream", authRequired, async (req, res) => {
 // =====================================================
 // Transcription (premium only)
 router.post("/transcribe", authRequired, premiumRequired, upload.single("audio"), async (req, res) => {
-  if (!OPENAI_ENABLED) {
-    return res.status(503).json({ error: "OpenAI is not configured on the server." });
-  }
   if (!req.file) {
     return res.status(400).json({ error: "Audio file is required." });
   }
@@ -262,10 +255,7 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  if (!OPENAI_ENABLED) {
-    return res.status(503).json({ error: "OpenAI is not configured on the server." });
-  }
-  let { prompt, size = "512x512", quality } = req.body || {};
+  let { prompt, size = "512x512", quality = "standard" } = req.body || {};
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required." });
@@ -278,19 +268,14 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       prompt = "Generate a creative image inspired by the uploaded photo.";
     }
 
-    const payload = {
+    const response = await openai.images.generate({
       model: "gpt-image-1",
       prompt,
       n: 1,
       size,
+      quality,
       response_format: 'b64_json'
-    };
-    // Quality is optional and only supported for certain values; avoid sending invalid values
-    if (typeof quality === 'string' && ['hd', 'high'].includes(quality.toLowerCase())) {
-      payload.quality = quality.toLowerCase();
-    }
-
-    const response = await openai.images.generate(payload);
+    });
 
     const b64 = response?.data?.[0]?.b64_json;
     if (!b64) {
@@ -306,12 +291,10 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       });
     }
 
-    const status = err?.status || err?.response?.status || 500;
-    const msg = err?.message || err?.response?.data?.error || 'Unknown error';
-    console.error("❌ Image generation error:", status, msg);
-    res.status(status).json({
-      error: "Image generation failed. Please verify your API key, model access, or prompt.",
-      details: msg,
+    console.error("❌ Image generation error:", err);
+    res.status(500).json({
+      error: "Image generation failed. Please verify your API key or prompt.",
+      details: err.message,
     });
   }
 });
@@ -320,9 +303,6 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
 // 🔊 TEXT-TO-SPEECH (TTS) ENDPOINT (premium only)
 // =====================================================
 router.post("/audio", authRequired, premiumRequired, async (req, res) => {
-  if (!OPENAI_ENABLED) {
-    return res.status(503).json({ error: "OpenAI is not configured on the server." });
-  }
   const { text, voice = 'alloy', format = 'mp3' } = req.body || {};
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: 'Text is required for TTS.' });
