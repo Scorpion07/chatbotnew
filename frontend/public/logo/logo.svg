@@ -1,25 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title>TalkSphere</title>
-  <desc>Globe inside a chat bubble</desc>
-  <defs>
-    <style>
-      .accent{stroke:#7c3aed;fill:none;stroke-width:32;stroke-linecap:round;stroke-linejoin:round}
-      .dot{fill:#7c3aed}
-    </style>
-  </defs>
-  <!-- Outer chat bubble (circle + tail) -->
-  <circle class="accent" cx="256" cy="248" r="200"/>
-  <path class="accent" d="M356 420l-4 64 80-36"/>
 
-  <!-- Globe lines -->
-  <ellipse class="accent" cx="256" cy="248" rx="170" ry="90"/>
-  <ellipse class="accent" cx="256" cy="248" rx="170" ry="90" transform="rotate(28 256 248)"/>
-  <ellipse class="accent" cx="256" cy="248" rx="170" ry="90" transform="rotate(-28 256 248)"/>
-
-  <!-- Nodes on intersections -->
-  <circle class="dot" cx="256" cy="158" r="14"/>
-  <circle class="dot" cx="346" cy="248" r="14"/>
-  <circle class="dot" cx="256" cy="338" r="14"/>
-  <circle class="dot" cx="166" cy="248" r="14"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <circle cx="32" cy="32" r="30" stroke="#6C2BF5" stroke-width="4" fill="none"/>
+  <path d="M20 20 Q32 10 44 20 Q32 30 20 20 Z" stroke="#6C2BF5" stroke-width="3" fill="none"/>
 </svg>
