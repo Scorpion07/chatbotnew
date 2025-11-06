@@ -34,9 +34,9 @@ export const config = {
     version: import.meta.env.VITE_APP_VERSION || "1.0.0",
     description: "Access GPT-4, Claude, Gemini, and more from one beautiful interface",
     logo: {
-      small: "/logo/logo.svg",
-      large: "/logo/logo-full-transparent.png",
-      favicon: "/logo/favicon.png"
+      small: "/logo/logoo.jpg",
+      large: "/logo/logoo.jpg",
+      favicon: "/logo/logoo.jpg"
     }
   },
 
