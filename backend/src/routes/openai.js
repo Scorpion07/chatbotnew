@@ -1,5 +1,6 @@
 import express from "express";
 import OpenAI from "openai";
+import fetch from 'node-fetch';
 import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
@@ -15,16 +16,12 @@ const router = express.Router();
 // ✅ Multer setup for file uploads
 const upload = multer({ dest: "uploads/" });
 
-// ✅ Validate API key
-if (!process.env.OPENAI_API_KEY) {
-  console.error("❌ Missing OPENAI_API_KEY in environment variables.");
-  process.exit(1);
+// ✅ Initialize OpenAI client if available (don't crash if missing)
+const HAS_OPENAI_KEY = !!process.env.OPENAI_API_KEY;
+if (!HAS_OPENAI_KEY) {
+  console.warn("⚠️ OPENAI_API_KEY is not set. Chat and OpenAI fallbacks will be unavailable.");
 }
-
-// ✅ Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = HAS_OPENAI_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 // Optional external provider (PenAPI) passthrough
 const PENAPI_BASE = process.env.PENAPI_BASE_URL || '';
@@ -80,6 +77,9 @@ router.post("/chat", authRequired, async (req, res) => {
       await conv.update({ title: title || `Chat ${conv.id}`, botName: botName || conv.botName });
     }
 
+    if (!openai) {
+      return res.status(500).json({ error: 'OpenAI is not configured on the server' });
+    }
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: message }],
@@ -174,6 +174,10 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     res.write(JSON.stringify({ type: 'start', conversationId: conv.id }) + "\n");
 
     // NOTE: For now, route to OpenAI mini model. Future: map botName/provider to specific models.
+    if (!openai) {
+      res.write(JSON.stringify({ type: 'error', error: 'OpenAI is not configured on the server' }) + "\n");
+      return res.end();
+    }
     const stream = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: message }],
@@ -301,6 +305,9 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
     }
 
     // OpenAI fallback (kept simple and stable)
+    if (!openai) {
+      return res.status(500).json({ error: 'OpenAI fallback unavailable and PenAPI failed/unset.' });
+    }
     const fallbackModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
     const response = await openai.images.generate({
       model: fallbackModel,
@@ -377,6 +384,9 @@ router.post("/audio", authRequired, premiumRequired, async (req, res) => {
     }
 
     // OpenAI fallback (stable)
+    if (!openai) {
+      return res.status(500).json({ error: 'OpenAI fallback unavailable and PenAPI failed/unset.' });
+    }
     const ttsModel = process.env.OPENAI_TTS_MODEL || 'tts-1';
     const tts = await openai.audio.speech.create({
       model: ttsModel,
