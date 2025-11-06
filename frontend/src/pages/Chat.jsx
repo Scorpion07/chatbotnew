@@ -5,6 +5,7 @@ import BotGrid from '../components/BotGrid.jsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
+import remarkEmoji from 'remark-emoji';
 
 export default function Chat({ setView }) {
   // Theme: persisted dark mode toggle
@@ -83,6 +84,12 @@ export default function Chat({ setView }) {
   // Get currently selected bot and display label (prefer official model name)
   const selectedBot = bots.find(b => b.name === selectedModel);
   const modelLabel = selectedBot?.model || selectedModel;
+  const provider = selectedBot?.provider || 'default';
+  const assistantAccent = provider === 'openai'
+    ? 'border-l-4 border-emerald-500/70'
+    : provider === 'google'
+    ? 'border-l-4 border-sky-500/70'
+    : 'border-l-4 border-indigo-500/60';
 
   // Utils: copy to clipboard
   const copyToClipboard = async (text) => {
@@ -668,7 +675,7 @@ export default function Chat({ setView }) {
                 <div className={`px-3 sm:px-5 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-sm sm:text-base ${
                   message.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none'
-                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 rounded-tl-none shadow-sm'
+                    : `bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 rounded-tl-none shadow-sm ${assistantAccent} pl-4 sm:pl-5`
                 }`}>
                   {message.type === 'image' ? (
                     <div className='space-y-2 sm:space-y-3'>
@@ -702,7 +709,7 @@ export default function Chat({ setView }) {
                   ) : (
                     <div className='prose prose-slate dark:prose-invert max-w-none'>
                       <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
+                        remarkPlugins={[remarkGfm, [remarkEmoji, { emoticon: true }]]}
                         rehypePlugins={[rehypeSanitize]}
                         components={{
                           code({node, inline, className, children, ...props}) {
@@ -710,6 +717,11 @@ export default function Chat({ setView }) {
                             const raw = String(children || '').replace(/\n$/, '');
                             return !inline ? (
                               <div className='relative group'>
+                                {match && match[1] && (
+                                  <div className='absolute top-2 left-2 text-[11px] px-2 py-0.5 rounded bg-gray-700/80 text-gray-100'>
+                                    {match[1]}
+                                  </div>
+                                )}
                                 <button
                                   onClick={() => copyToClipboard(raw)}
                                   className='absolute top-2 right-2 text-xs px-2 py-1 rounded bg-gray-700/80 text-gray-100 opacity-0 group-hover:opacity-100 transition-opacity'
