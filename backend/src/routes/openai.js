@@ -308,7 +308,7 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
     if (!openai) {
       return res.status(500).json({ error: 'OpenAI fallback unavailable and PenAPI failed/unset.' });
     }
-    const fallbackModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
+  const fallbackModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-latest';
     const response = await openai.images.generate({
       model: fallbackModel,
       prompt,
