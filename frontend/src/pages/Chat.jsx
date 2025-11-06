@@ -86,17 +86,66 @@ export default function Chat({ setView }) {
   const selectedBot = bots.find(b => b.name === selectedModel);
   const modelLabel = selectedBot?.model || selectedModel;
   const provider = selectedBot?.provider || 'default';
-  // Assistant theme approximations (no proprietary assets)
-  const assistantBg = provider === 'openai'
-    ? 'bg-gray-50 dark:bg-[#212327]'
-    : provider === 'google'
-    ? 'bg-sky-50 dark:bg-sky-900/20'
-    : 'bg-white dark:bg-gray-800';
-  const assistantBorder = provider === 'openai'
-    ? 'border border-gray-200 dark:border-gray-700'
-    : provider === 'google'
-    ? 'border border-sky-100 dark:border-sky-800/40'
-    : 'border border-gray-200 dark:border-gray-700';
+  // Provider-specific themes (approximate native feels)
+  const providerThemes = {
+    openai: {
+      bgLight: 'bg-gray-50',
+      bgDark: 'dark:bg-[#212327]',
+      borderLight: 'border-gray-200',
+      borderDark: 'dark:border-gray-700',
+      chip: 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40',
+    },
+    google: {
+      bgLight: 'bg-sky-50',
+      bgDark: 'dark:bg-sky-900/20',
+      borderLight: 'border-sky-100',
+      borderDark: 'dark:border-sky-800/40',
+      chip: 'bg-sky-100 text-sky-700 border border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800/40',
+    },
+    anthropic: {
+      bgLight: 'bg-orange-50',
+      bgDark: 'dark:bg-orange-900/20',
+      borderLight: 'border-orange-100',
+      borderDark: 'dark:border-orange-800/40',
+      chip: 'bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800/40',
+    },
+    deepai: {
+      bgLight: 'bg-cyan-50',
+      bgDark: 'dark:bg-cyan-900/20',
+      borderLight: 'border-cyan-100',
+      borderDark: 'dark:border-cyan-800/40',
+      chip: 'bg-cyan-100 text-cyan-700 border border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800/40',
+    },
+    x: {
+      bgLight: 'bg-gray-100',
+      bgDark: 'dark:bg-gray-900/40',
+      borderLight: 'border-gray-200',
+      borderDark: 'dark:border-gray-800',
+      chip: 'bg-gray-200 text-gray-700 border border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700',
+    },
+    imageai: {
+      bgLight: 'bg-rose-50',
+      bgDark: 'dark:bg-rose-900/20',
+      borderLight: 'border-rose-100',
+      borderDark: 'dark:border-rose-800/40',
+      chip: 'bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800/40',
+    },
+    'openai-audio': {
+      bgLight: 'bg-gray-50',
+      bgDark: 'dark:bg-[#212327]',
+      borderLight: 'border-gray-200',
+      borderDark: 'dark:border-gray-700',
+      chip: 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/40',
+    },
+    default: {
+      bgLight: 'bg-white',
+      bgDark: 'dark:bg-gray-800',
+      borderLight: 'border-gray-200',
+      borderDark: 'dark:border-gray-700',
+      chip: 'bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700',
+    }
+  };
+  const PT = providerThemes[provider] || providerThemes.default;
 
   // Utils: copy to clipboard
   const copyToClipboard = async (text) => {
@@ -682,7 +731,7 @@ export default function Chat({ setView }) {
                 <div className={`px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base ${
                   message.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none'
-                    : `${assistantBg} ${assistantBorder} text-gray-800 dark:text-gray-100 rounded-tl-none shadow-sm`
+                    : `${PT.bgLight} ${PT.bgDark} border ${PT.borderLight} ${PT.borderDark} text-gray-800 dark:text-gray-100 rounded-tl-none shadow-sm`
                 }`}>
                   {message.type === 'image' ? (
                     <div className='space-y-2 sm:space-y-3'>
@@ -714,7 +763,14 @@ export default function Chat({ setView }) {
                       )}
                     </div>
                   ) : (
-                    <div className='prose prose-slate dark:prose-invert max-w-none'>
+                    <>
+                      {/* Provider/model chip header to mimic native UIs */}
+                      {message.role === 'assistant' && (
+                        <div className='mb-2 -mt-1 flex items-center gap-2 text-xs'>
+                          <span className={`px-2 py-0.5 rounded-full ${PT.chip}`}>{message.model || modelLabel}</span>
+                        </div>
+                      )}
+                      <div className='prose prose-slate dark:prose-invert max-w-none'>
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm, [remarkEmoji, { emoticon: true }]]}
                         rehypePlugins={[rehypeSanitize, rehypeHighlight]}
@@ -755,7 +811,8 @@ export default function Chat({ setView }) {
                       >
                         {message.content}
                       </ReactMarkdown>
-                    </div>
+                      </div>
+                    </>
                   )}
                 </div>
                 <div className={`text-xs text-gray-500 dark:text-gray-400 mt-1 px-2 flex items-center gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-between'} max-w-3xl`}>        
