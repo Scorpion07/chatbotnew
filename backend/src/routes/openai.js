@@ -304,7 +304,7 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       }
     }
 
-    // OpenAI fallback (kept simple and stable)
+    // OpenAI fallback (new Images API format: remove deprecated params)
     if (!openai) {
       return res.status(500).json({ error: 'OpenAI fallback unavailable and PenAPI failed/unset.' });
     }
@@ -312,14 +312,14 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
     const response = await openai.images.generate({
       model: fallbackModel,
       prompt,
-      n: 1,
-      size,
-      quality,
-      response_format: 'b64_json'
+      n: 1
     });
-    const b64 = response?.data?.[0]?.b64_json;
-    if (!b64) return res.status(500).json({ error: 'Image generation failed: empty response.' });
-    return res.json({ url: `data:image/png;base64,${b64}` });
+    const item = response?.data?.[0] || {};
+    const imgUrl = item.url || item.image_url;
+    const b64 = item.b64_json || item.b64 || item.base64;
+    if (imgUrl) return res.json({ url: imgUrl });
+    if (b64) return res.json({ url: `data:image/png;base64,${b64}` });
+    return res.status(500).json({ error: 'Image generation failed: empty response.' });
   } catch (err) {
     if (err.code === "billing_hard_limit_reached") {
       return res.status(402).json({
