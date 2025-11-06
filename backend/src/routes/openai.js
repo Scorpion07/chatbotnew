@@ -255,7 +255,7 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  let { prompt, size = "512x512", quality = "standard" } = req.body || {};
+  let { prompt, size = "512x512", quality } = req.body || {};
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required." });
@@ -268,14 +268,19 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       prompt = "Generate a creative image inspired by the uploaded photo.";
     }
 
-    const response = await openai.images.generate({
+    const payload = {
       model: "gpt-image-1",
       prompt,
       n: 1,
       size,
-      quality,
       response_format: 'b64_json'
-    });
+    };
+    // Quality is optional and only supported for certain values; avoid sending invalid values
+    if (typeof quality === 'string' && ['hd', 'high'].includes(quality.toLowerCase())) {
+      payload.quality = quality.toLowerCase();
+    }
+
+    const response = await openai.images.generate(payload);
 
     const b64 = response?.data?.[0]?.b64_json;
     if (!b64) {
@@ -291,10 +296,12 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       });
     }
 
-    console.error("❌ Image generation error:", err);
-    res.status(500).json({
-      error: "Image generation failed. Please verify your API key or prompt.",
-      details: err.message,
+    const status = err?.status || err?.response?.status || 500;
+    const msg = err?.message || err?.response?.data?.error || 'Unknown error';
+    console.error("❌ Image generation error:", status, msg);
+    res.status(status).json({
+      error: "Image generation failed. Please verify your API key, model access, or prompt.",
+      details: msg,
     });
   }
 });
