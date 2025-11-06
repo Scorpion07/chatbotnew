@@ -1,29 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Primary brand color -->
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title>TalkSphere</title>
+  <desc>Globe inside a chat bubble</desc>
   <defs>
     <style>
-      .stroke{stroke:#7C3AED;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
-      .dot{fill:#7C3AED}
+      .accent{stroke:#7c3aed;fill:none;stroke-width:32;stroke-linecap:round;stroke-linejoin:round}
+      .dot{fill:#7c3aed}
     </style>
   </defs>
+  <!-- Outer chat bubble (circle + tail) -->
+  <circle class="accent" cx="256" cy="248" r="200"/>
+  <path class="accent" d="M356 420l-4 64 80-36"/>
 
-  <!-- Chat bubble outline (circular bubble with tail) -->
-  <path class="stroke" d="M32 6c13.255 0 24 9.58 24 21.4 0 11.8-10.745 21.4-24 21.4-2.87 0-5.624-.44-8.168-1.26a2 2 0 0 0-1.452.105L14 51l1.63-7.03a2 2 0 0 0-.64-2.02C11.999 38.59 8 33.19 8 27.4 8 15.58 18.745 6 32 6z"/>
-
-  <!-- Globe circle inside the bubble -->
-  <circle class="stroke" cx="32" cy="27" r="14"/>
-
-  <!-- Latitudinal arc -->
-  <path class="stroke" d="M18.5 27c3.8 4 13.2 4 27 0"/>
-
-  <!-- Longitudinal arcs -->
-  <path class="stroke" d="M32 13c-4.5 6-4.5 22 0 28"/>
-  <path class="stroke" d="M24.5 17.5c6.5 3.5 8.5 15.5 0 19"/>
-  <path class="stroke" d="M39.5 17.5c-6.5 3.5-8.5 15.5 0 19"/>
+  <!-- Globe lines -->
+  <ellipse class="accent" cx="256" cy="248" rx="170" ry="90"/>
+  <ellipse class="accent" cx="256" cy="248" rx="170" ry="90" transform="rotate(28 256 248)"/>
+  <ellipse class="accent" cx="256" cy="248" rx="170" ry="90" transform="rotate(-28 256 248)"/>
 
   <!-- Nodes on intersections -->
-  <circle class="dot" cx="25.5" cy="24" r="2.2"/>
-  <circle class="dot" cx="38.5" cy="24.5" r="2.2"/>
-  <circle class="dot" cx="28.5" cy="33.5" r="2.2"/>
-  <circle class="dot" cx="35.5" cy="32.5" r="2.2"/>
+  <circle class="dot" cx="256" cy="158" r="14"/>
+  <circle class="dot" cx="346" cy="248" r="14"/>
+  <circle class="dot" cx="256" cy="338" r="14"/>
+  <circle class="dot" cx="166" cy="248" r="14"/>
 </svg>
