@@ -298,12 +298,14 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       prompt,
       n: 1,
       size,
-      quality,
-      response_format: 'b64_json'
+      quality
     });
-    const b64 = response?.data?.[0]?.b64_json;
-    if (!b64) return res.status(500).json({ error: 'Image generation failed: empty response.' });
-    return res.json({ url: `data:image/png;base64,${b64}` });
+    const first = response?.data?.[0] || {};
+    const url = first.url;
+    const b64 = first.b64_json;
+    if (url) return res.json({ url });
+    if (b64) return res.json({ url: `data:image/png;base64,${b64}` });
+    return res.status(500).json({ error: 'Image generation failed: empty response.' });
   } catch (err) {
     if (err?.code === "billing_hard_limit_reached") {
       return res.status(402).json({
