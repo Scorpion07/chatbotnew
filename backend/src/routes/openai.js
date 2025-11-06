@@ -1,6 +1,7 @@
 import express from "express";
 import OpenAI from "openai";
 import fetch from 'node-fetch';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
@@ -26,6 +27,10 @@ const openai = HAS_OPENAI_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY 
 // Optional external provider (PenAPI) passthrough
 const PENAPI_BASE = process.env.PENAPI_BASE_URL || '';
 const PENAPI_KEY = process.env.PENAPI_KEY || '';
+const HAS_GOOGLE_KEY = !!process.env.GOOGLE_API_KEY;
+const genAI = HAS_GOOGLE_KEY ? new GoogleGenerativeAI(process.env.GOOGLE_API_KEY) : null;
+const GEMINI_IMAGE_MODEL = process.env.GOOGLE_IMAGE_MODEL || 'gemini-pro-vision';
+const geminiModel = genAI ? genAI.getGenerativeModel({ model: GEMINI_IMAGE_MODEL }) : null;
 
 // =====================================================
 // 🧠 TEXT CHAT ENDPOINT (with auth and free-tier limit)
@@ -304,22 +309,39 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       }
     }
 
-    // OpenAI fallback (new Images API format: remove deprecated params)
-    if (!openai) {
-      return res.status(500).json({ error: 'OpenAI fallback unavailable and PenAPI failed/unset.' });
+    // Gemini image generation (replace OpenAI fallback)
+    if (!geminiModel) {
+      return res.status(500).json({ error: 'Gemini is not configured and PenAPI failed/unset.' });
     }
-  const fallbackModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-latest';
-    const response = await openai.images.generate({
-      model: fallbackModel,
-      prompt,
-      n: 1
-    });
-    const item = response?.data?.[0] || {};
-    const imgUrl = item.url || item.image_url;
-    const b64 = item.b64_json || item.b64 || item.base64;
-    if (imgUrl) return res.json({ url: imgUrl });
-    if (b64) return res.json({ url: `data:image/png;base64,${b64}` });
-    return res.status(500).json({ error: 'Image generation failed: empty response.' });
+    try {
+      // Preferred: SDK method if available
+      if (typeof geminiModel.generateImage === 'function') {
+        const result = await geminiModel.generateImage({ prompt, size: '1024x1024' });
+        const gUrl = result?.data?.[0]?.url || result?.imageUrl;
+        const gB64 = result?.data?.[0]?.b64 || result?.data?.[0]?.base64 || result?.b64;
+        if (gUrl) return res.json({ url: gUrl });
+        if (gB64) return res.json({ url: `data:image/png;base64,${gB64}` });
+      }
+      // Fallback: REST Images API (broad parsing for schema changes)
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/images:generate?key=${process.env.GOOGLE_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, n: 1, size: '1024x1024' })
+      });
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => '');
+        throw new Error(`Gemini Images error: ${resp.status} ${txt}`);
+      }
+      const data = await resp.json();
+      const url = data?.url || data?.imageUrl || data?.image_url || data?.images?.[0]?.url || data?.data?.[0]?.url;
+      const b64 = data?.b64 || data?.base64 || data?.images?.[0]?.b64 || data?.images?.[0]?.base64 || data?.data?.[0]?.b64 || data?.data?.[0]?.b64_json || data?.candidates?.[0]?.content?.parts?.find(p => p?.inlineData)?.inlineData?.data;
+      if (url) return res.json({ url });
+      if (b64) return res.json({ url: `data:image/png;base64,${b64}` });
+      return res.status(500).json({ error: 'Gemini image generation returned empty response.' });
+    } catch (e) {
+      console.error('❌ Gemini Image Error:', e);
+      return res.status(500).json({ error: 'Gemini image generation failed' });
+    }
   } catch (err) {
     if (err.code === "billing_hard_limit_reached") {
       return res.status(402).json({
