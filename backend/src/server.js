@@ -6,6 +6,7 @@ import { Server } from 'socket.io';
 import botsRouter from './routes/bots.js';
 import statsRouter from './routes/stats.js';
 import openaiRouter from './routes/openai.js';
+import aiRouter from './routes/ai.js';
 import authRouter from './routes/auth.js';
 import usageRouter from './routes/usage.js';
 import conversationsRouter from './routes/conversations.js';
@@ -63,6 +64,7 @@ app.use((req, res, next) => {
 app.use('/api/bots', botsRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/openai', openaiRouter);
+app.use('/api/ai', aiRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/usage', usageRouter);
 app.use('/api/admin', adminRouter);

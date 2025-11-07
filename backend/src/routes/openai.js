@@ -1,6 +1,7 @@
 import express from "express";
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import Replicate from "replicate";
 import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
@@ -27,7 +28,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// FLUX removed: no Replicate client
+// Replicate client for FLUX image generation
+const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN || '' });
 
 // ==============================
 // Gemini (Imagen) helper
@@ -310,10 +312,63 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       prompt = "Generate a creative image inspired by the uploaded photo.";
     }
 
-    return res.status(400).json({ error: 'Unsupported image provider. Use provider="gemini".' });
+    if (!process.env.REPLICATE_API_TOKEN) {
+      console.error('❌ Flux image generation failed: missing REPLICATE_API_TOKEN');
+      return res.status(500).json({ error: 'Flux image generation failed' });
+    }
+
+  // Log clear usage of FLUX via Replicate
+    console.log('🖼️  Using FLUX via Replicate: model=black-forest-labs/flux-schnell');
+
+    // FLUX image generation with revised error handling
+    let output;
+    try {
+      output = await replicate.run(
+        "black-forest-labs/flux-schnell",
+        {
+          input: {
+            prompt,
+            num_outputs: 1
+          }
+        }
+      );
+    } catch (error) {
+      if (error.response) {
+        let errJson = null;
+        try {
+          errJson = await error.response.json();
+        } catch (_) {}
+
+        console.error("🔥 FLUX API ERROR JSON:", errJson);
+        console.error("🔥 FLUX RAW ERROR:", error);
+        return res.status(500).json({ error: "Flux failed", details: errJson });
+      } else {
+        console.error("🔥 FLUX UNKNOWN ERROR:", error);
+        return res.status(500).json({ error: error.message });
+      }
+    }
+
+    // Log final image URL
+    if (Array.isArray(output) && output[0]) {
+      console.log("✅ Flux image:", output[0]);
+    }
+
+    let url = null;
+    if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
+      url = output[0];
+    } else if (output && typeof output === 'object') {
+      url = output.url || output.image || null;
+    }
+
+    if (!url) {
+      console.error('❌ Flux image generation failed: unexpected output');
+      return res.status(500).json({ error: 'Flux image generation failed' });
+    }
+
+    return res.json({ url });
   } catch (err) {
-    console.error('❌ Image generation failed:', err);
-    return res.status(500).json({ error: 'Image generation failed' });
+    console.error('❌ Flux image generation failed:', err);
+    return res.status(500).json({ error: 'Flux image generation failed' });
   }
 });
 
