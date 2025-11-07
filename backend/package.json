@@ -15,12 +15,11 @@
     "fs-extra": "^11.3.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
-  "replicate": "^0.31.0",
     "openai": "^6.6.0",
     "sequelize": "^6.32.1",
     "socket.io": "^4.7.2",
-    "sqlite3": "^5.1.6",
-    "@google/generative-ai": "^0.8.0"
+  "sqlite3": "^5.1.6",
+  "@google/generative-ai": "^0.8.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

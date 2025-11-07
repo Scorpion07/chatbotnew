@@ -1,6 +1,5 @@
 import express from "express";
 import OpenAI from "openai";
-import Replicate from "replicate";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import multer from "multer";
 import fs from "fs";
@@ -28,8 +27,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Replicate client for FLUX image generation
-const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN || '' });
+// (Flux/Replicate removed)
 
 // Gemini image generation via Google Generative AI
 async function generateGeminiImage(prompt) {
@@ -304,63 +302,25 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       }
     }
 
-    if (!process.env.REPLICATE_API_TOKEN) {
-      console.error('❌ Flux image generation failed: missing REPLICATE_API_TOKEN');
-      return res.status(500).json({ error: 'Flux image generation failed' });
-    }
-
-  // Log clear usage of FLUX via Replicate
-    console.log('🖼️  Using FLUX via Replicate: model=black-forest-labs/flux-schnell');
-
-    // FLUX image generation with revised error handling
-    let output;
+    // Default: OpenAI Images
     try {
-      output = await replicate.run(
-        "black-forest-labs/flux-schnell",
-        {
-          input: {
-            prompt,
-            num_outputs: 1
-          }
-        }
-      );
-    } catch (error) {
-      if (error.response) {
-        let errJson = null;
-        try {
-          errJson = await error.response.json();
-        } catch (_) {}
-
-        console.error("🔥 FLUX API ERROR JSON:", errJson);
-        console.error("🔥 FLUX RAW ERROR:", error);
-        return res.status(500).json({ error: "Flux failed", details: errJson });
-      } else {
-        console.error("🔥 FLUX UNKNOWN ERROR:", error);
-        return res.status(500).json({ error: error.message });
+      const img = await openai.images.generate({
+        model: 'gpt-image-1',
+        prompt,
+        size: '1024x1024'
+      });
+      const url = img?.data?.[0]?.url || null;
+      if (!url) {
+        return res.status(500).json({ error: 'OpenAI image generation failed' });
       }
+      return res.json({ url });
+    } catch (error) {
+      console.error('❌ OpenAI image generation failed:', error);
+      return res.status(500).json({ error: 'Image generation provider not configured' });
     }
-
-    // Log final image URL
-    if (Array.isArray(output) && output[0]) {
-      console.log("✅ Flux image:", output[0]);
-    }
-
-    let url = null;
-    if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
-      url = output[0];
-    } else if (output && typeof output === 'object') {
-      url = output.url || output.image || null;
-    }
-
-    if (!url) {
-      console.error('❌ Flux image generation failed: unexpected output');
-      return res.status(500).json({ error: 'Flux image generation failed' });
-    }
-
-    return res.json({ url });
   } catch (err) {
-    console.error('❌ Flux image generation failed:', err);
-    return res.status(500).json({ error: 'Flux image generation failed' });
+    console.error('❌ Image generation error:', err);
+    return res.status(500).json({ error: 'Image generation provider not configured' });
   }
 });
 
