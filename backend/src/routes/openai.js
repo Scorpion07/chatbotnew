@@ -56,15 +56,7 @@ function ensureVertexEnv() {
 async function generateVertexImage(userPrompt, { size = "1024x1024" } = {}) {
   ensureVertexEnv();
 
-  // Basic image-intent heuristic (keeps your 400s meaningful to the UI)
-  const isImageIntent = /\b(image|picture|photo|draw|art|logo|icon|design|generate|illustration|render|poster|wallpaper|create)\b/i.test(
-    userPrompt || ""
-  );
-  if (!isImageIntent) {
-    const err = new Error("This prompt does not describe an image.");
-    err.code = "NO_IMAGE_INTENT";
-    throw err;
-  }
+  // No image intent filter — always assume prompt is valid
 
   // Vertex Imagen supports only specific dimensions
   const allowedSizes = new Set([
