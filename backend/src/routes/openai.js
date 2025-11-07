@@ -29,24 +29,21 @@ const openai = new OpenAI({
 
 // (Flux/Replicate removed)
 
-// Gemini image generation via Google Generative AI
+// Gemini-only image generation via Google Generative AI
 async function generateGeminiImage(prompt) {
   if (!process.env.GOOGLE_API_KEY) {
     throw new Error("Missing GOOGLE_API_KEY");
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "models/imagegeneration" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro-vision" });
 
   const result = await model.generateImage({
     prompt,
-    size: "1024x1024",
   });
 
-  // Ensure consistent output format
-  return {
-    base64: result.images?.[0]?.image || null,
-  };
+  // Return base64 image string or null
+  return result?.images?.[0]?.image || null;
 }
 
 // =====================================================
@@ -278,49 +275,27 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  let { prompt, provider } = req.body || {};
+  const { prompt } = req.body || {};
 
   if (!prompt) {
-    return res.status(400).json({ error: "Prompt is required." });
+    return res.status(400).json({ success: false, error: "Prompt is required." });
   }
 
   try {
-    // Clean up prompt: remove markdown or base64 image text
-    prompt = String(prompt).replace(/!\[.*?\]\(.*?\)/g, "").trim();
-    if (prompt === "") {
-      prompt = "Generate a creative image inspired by the uploaded photo.";
-    }
-
-    // Handle Gemini provider explicitly without affecting other integrations
-    if (provider === "gemini") {
-      try {
-        const resObj = await generateGeminiImage(prompt);
-        return res.json(resObj);
-      } catch (error) {
-        console.error("❌ Gemini image generation failed:", error);
-        return res.status(500).json({ error: "Gemini image generation failed" });
-      }
-    }
-
-    // Default: OpenAI Images
+    // Gemini-only implementation
     try {
-      const img = await openai.images.generate({
-        model: 'gpt-image-1',
-        prompt,
-        size: '1024x1024'
-      });
-      const url = img?.data?.[0]?.url || null;
-      if (!url) {
-        return res.status(500).json({ error: 'OpenAI image generation failed' });
+      const base64 = await generateGeminiImage(String(prompt));
+      if (!base64) {
+        return res.status(500).json({ success: false, error: 'Gemini returned no image' });
       }
-      return res.json({ url });
+      return res.json({ success: true, image: base64 });
     } catch (error) {
-      console.error('❌ OpenAI image generation failed:', error);
-      return res.status(500).json({ error: 'Image generation provider not configured' });
+      console.error('❌ Gemini image generation failed:', error);
+      return res.status(500).json({ success: false, error: error.message });
     }
   } catch (err) {
     console.error('❌ Image generation error:', err);
-    return res.status(500).json({ error: 'Image generation provider not configured' });
+    return res.status(500).json({ success: false, error: err.message || 'Gemini image generation failed' });
   }
 });
 
