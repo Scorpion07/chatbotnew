@@ -14,26 +14,28 @@ import { authRequired, premiumRequired } from "../middleware/auth.js";
 
 dotenv.config();
 
-// ESM dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Router + file uploads
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-// ---------------------- OPENAI (Text + TTS) ----------------------
+// -----------------------------------------------------------
+// ✅ OPENAI Setup
+// -----------------------------------------------------------
 if (!process.env.OPENAI_API_KEY) {
   console.error("❌ Missing OPENAI_API_KEY");
   process.exit(1);
 }
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ---------------------- VERTEX IMAGE GENERATION ----------------------
+// -----------------------------------------------------------
+// ✅ Vertex AI Setup
+// -----------------------------------------------------------
 const VERTEX_LOCATION = "us-central1";
-const KEY_PATH = path.resolve(__dirname, "..", "..", "vertex-key.json");
+const KEY_PATH = path.resolve(__dirname, "..", "vertex-key.json");
 
-// Load service account JSON
+// ✅ Load Service Account Key
 function loadServiceAccount() {
   if (!fs.existsSync(KEY_PATH)) {
     throw new Error(`Service account key missing at ${KEY_PATH}`);
@@ -43,7 +45,7 @@ function loadServiceAccount() {
   return data;
 }
 
-// Get OAuth Access Token
+// ✅ Get OAuth Token
 async function getVertexToken() {
   const auth = new GoogleAuth({
     keyFile: KEY_PATH,
@@ -52,41 +54,47 @@ async function getVertexToken() {
 
   const client = await auth.getClient();
   const token = await client.getAccessToken();
+
   if (!token?.token) throw new Error("Failed to obtain Vertex OAuth token");
 
   return token.token;
 }
 
-// ✅ FINAL WORKING Imagen-style Image Generation
+// -----------------------------------------------------------
+// ✅ Imagen 3 / Imagen 2.0 / Imagen 4 Compatible Endpoint
+//    (Google now uses one unified endpoint: imagegeneration:predict)
+// -----------------------------------------------------------
 async function generateVertexImage(prompt, aspectRatio = "1:1") {
-  if (!prompt || typeof prompt !== "string") {
+  if (!prompt) {
     const e = new Error("Prompt is required.");
     e.status = 400;
     throw e;
   }
 
   const sa = loadServiceAccount();
-  const accessToken = await getVertexToken();
+  const token = await getVertexToken();
 
-  const url =
-    `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/` +
-    `projects/${sa.project_id}/locations/${VERTEX_LOCATION}/` +
-    `publishers/google/models/imagegeneration:predict`;
+  const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${sa.project_id}/locations/${VERTEX_LOCATION}/publishers/google/models/imagegeneration:predict`;
 
-  // Correct 2025 schema — NO pixel sizes allowed
+  // ✅ Imagen 3+ correct schema — NO resolution allowed
   const body = {
-    instances: [{ prompt }],
+    instances: [
+      {
+        prompt,
+      },
+    ],
     parameters: {
-      aspectRatio,     // "1:1", "16:9", "9:16", "4:3", etc.
+      aspectRatio,             // ✅ Must be: "1:1", "16:9", "4:3", "9:16", "3:4"
       quality: "high",
-      outputMimeType: "image/png"
-    }
+      outputMimeType: "image/png",
+      safetyFilterLevel: "block_some", // ✅ Avoids false blocks
+    },
   };
 
   const resp = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -95,14 +103,14 @@ async function generateVertexImage(prompt, aspectRatio = "1:1") {
   const json = await resp.json();
 
   if (!resp.ok) {
-    const msg = json?.error?.message || `${resp.status} Vertex error`;
-    const err = new Error(`Vertex predict failed: ${msg}`);
+    const err = new Error(`Vertex predict failed: ${json?.error?.message}`);
     err.status = resp.status;
     err.vertex = json;
     throw err;
   }
 
   const pred = json?.predictions?.[0];
+
   if (!pred?.bytesBase64Encoded) {
     throw new Error("Vertex returned no image data.");
   }
@@ -110,9 +118,9 @@ async function generateVertexImage(prompt, aspectRatio = "1:1") {
   return `data:image/png;base64,${pred.bytesBase64Encoded}`;
 }
 
-// =====================================================
+// -----------------------------------------------------------
 // ✅ TEXT CHAT
-// =====================================================
+// -----------------------------------------------------------
 router.post("/chat", authRequired, async (req, res) => {
   const { message, botName, conversationId } = req.body;
 
@@ -123,7 +131,6 @@ router.post("/chat", authRequired, async (req, res) => {
   try {
     const user = req.user;
 
-    // Create or load conversation
     let conv = null;
     if (conversationId) {
       conv = await Conversation.findOne({
@@ -138,7 +145,7 @@ router.post("/chat", authRequired, async (req, res) => {
       });
     }
 
-    // Free-tier limit
+    // ✅ Free limit
     if (!user.isPremium) {
       const FREE_LIMIT = appConfig?.rateLimit?.freeUserLimit || 5;
       const [usage] = await Usage.findOrCreate({
@@ -153,7 +160,6 @@ router.post("/chat", authRequired, async (req, res) => {
       }
     }
 
-    // Save user message
     await Message.create({
       conversationId: conv.id,
       role: "user",
@@ -162,7 +168,6 @@ router.post("/chat", authRequired, async (req, res) => {
       botName: botName || "default",
     });
 
-    // Auto-title
     if (!conv.title) {
       await conv.update({
         title: message.slice(0, 60),
@@ -170,64 +175,52 @@ router.post("/chat", authRequired, async (req, res) => {
       });
     }
 
-    // Generate response
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: message }],
     });
 
-    const assistantContent = response.choices?.[0]?.message?.content || "";
+    const output = response.choices?.[0]?.message?.content || "";
 
-    // Save assistant message
     await Message.create({
       conversationId: conv.id,
       role: "assistant",
-      content: assistantContent,
+      content: output,
       model: "gpt-4o-mini",
       type: "text",
       botName: botName || "default",
     });
 
-    // Increment usage
     if (!user.isPremium) {
       await Usage.increment(
         { count: 1 },
-        { where: { userId: user.id, botName: botName || "default" } }
-      );
-      await Usage.update(
-        { lastUsedAt: new Date() },
         { where: { userId: user.id, botName: botName || "default" } }
       );
     }
 
     await conv.update({ updatedAt: new Date() });
 
-    res.json({ response: assistantContent, conversationId: conv.id });
-
+    res.json({ response: output, conversationId: conv.id });
   } catch (err) {
     console.error("❌ Chat error:", err);
     res.status(500).json({ error: "Chat processing failed" });
   }
 });
 
-// =====================================================
-// ✅ STREAMING CHAT
-// =====================================================
+// -----------------------------------------------------------
+// ✅ STREAM CHAT
+// -----------------------------------------------------------
 router.post("/chat/stream", authRequired, async (req, res) => {
   const { message, botName, conversationId } = req.body;
 
-  if (!message) {
-    return res.status(400).json({ error: "Message is required." });
-  }
+  if (!message) return res.status(400).json({ error: "Message required" });
 
   try {
     const user = req.user;
 
     let conv = null;
     if (conversationId) {
-      conv = await Conversation.findOne({
-        where: { id: conversationId, userId: user.id },
-      });
+      conv = await Conversation.findOne({ where: { id: conversationId, userId: user.id } });
       if (!conv) return res.status(404).json({ error: "Conversation not found" });
     } else {
       conv = await Conversation.create({
@@ -239,6 +232,7 @@ router.post("/chat/stream", authRequired, async (req, res) => {
 
     res.setHeader("Content-Type", "application/x-ndjson");
     res.setHeader("Cache-Control", "no-cache");
+
     res.write(JSON.stringify({ type: "start", conversationId: conv.id }) + "\n");
 
     const stream = await openai.chat.completions.create({
@@ -250,7 +244,6 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     let full = "";
     for await (const part of stream) {
       const delta = part?.choices?.[0]?.delta?.content || "";
-      if (!delta) continue;
       full += delta;
       res.write(JSON.stringify({ type: "delta", text: delta }) + "\n");
     }
@@ -267,24 +260,22 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     res.write(JSON.stringify({ type: "done", response: full }) + "\n");
     res.end();
   } catch (err) {
-    console.error("❌ Streaming error:", err);
+    console.error("❌ Stream error:", err);
     res.write(JSON.stringify({ type: "error", error: "Streaming failed" }) + "\n");
     res.end();
   }
 });
 
-// =====================================================
-// ✅ AUDIO TRANSCRIBE (premium)
-// =====================================================
+// -----------------------------------------------------------
+// ✅ AUDIO TRANSCRIBE
+// -----------------------------------------------------------
 router.post(
   "/transcribe",
   authRequired,
   premiumRequired,
   upload.single("audio"),
   async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ error: "Audio file required" });
-    }
+    if (!req.file) return res.status(400).json({ error: "Audio required" });
 
     try {
       const result = await openai.audio.transcriptions.create({
@@ -293,7 +284,6 @@ router.post(
       });
 
       res.json({ transcript: result.text });
-
     } catch (err) {
       console.error("❌ Transcription error:", err);
       res.status(500).json({ error: "Transcription failed" });
@@ -303,9 +293,9 @@ router.post(
   }
 );
 
-// =====================================================
-// ✅ IMAGE GENERATION (Vertex)
-// =====================================================
+// -----------------------------------------------------------
+// ✅ IMAGE GENERATION (Vertex AI)
+// -----------------------------------------------------------
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
   try {
     const { prompt, ratio } = req.body;
@@ -313,22 +303,23 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
 
     const img = await generateVertexImage(prompt, aspectRatio);
     res.json({ success: true, image: img });
-
   } catch (err) {
     console.error("❌ Vertex image generation failed:", err);
-    res
-      .status(err?.status || 500)
-      .json({ success: false, error: err.message });
+    res.status(err?.status || 500).json({
+      success: false,
+      error: err.message,
+      vertex: err.vertex || null,
+    });
   }
 });
 
-// =====================================================
-// ✅ TEXT TO SPEECH
-// =====================================================
+// -----------------------------------------------------------
+// ✅ TEXT → SPEECH
+// -----------------------------------------------------------
 router.post("/audio", authRequired, premiumRequired, async (req, res) => {
   const { text, voice = "alloy", format = "mp3" } = req.body;
 
-  if (!text) return res.status(400).json({ error: "Text is required" });
+  if (!text) return res.status(400).json({ error: "Text required" });
 
   try {
     const tts = await openai.audio.speech.create({
@@ -341,7 +332,6 @@ router.post("/audio", authRequired, premiumRequired, async (req, res) => {
     const buffer = Buffer.from(await tts.arrayBuffer());
     res.setHeader("Content-Type", "audio/mpeg");
     res.send(buffer);
-
   } catch (err) {
     console.error("❌ TTS error:", err);
     res.status(500).json({ error: "TTS failed" });
