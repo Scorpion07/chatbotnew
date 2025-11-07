@@ -49,12 +49,11 @@ const imageModel = vertex.getGenerativeModel({
 
 // ✅ Minimal helper: Convert prompt → Image
 async function generateVertexImage(prompt) {
-  const intent = /\b(image|photo|picture|draw|art|generate|logo|design|illustration)\b/i;
-  if (!intent.test(prompt)) {
-    const err = new Error("NO_IMAGE_INTENT");
-    err.code = "NO_IMAGE_INTENT";
-    throw err;
+  // Always treat prompt as image request
+  if (!prompt || typeof prompt !== "string" || prompt.length < 2) {
+    throw new Error("Invalid prompt");
   }
+
 
   const result = await imageModel.generateImages({
     prompt,
