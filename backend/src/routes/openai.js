@@ -1,6 +1,6 @@
 import express from "express";
 import OpenAI from "openai";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { VertexAI } from '@google-cloud/vertexai';
 import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
@@ -29,66 +29,38 @@ const openai = new OpenAI({
 
 // (Flux/Replicate removed)
 
-// Gemini-only image generation via Google Generative AI (two-pass attempt)
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-
-async function generateGeminiImage(prompt) {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-exp",
-  });
-
-  // FIRST ATTEMPT
-  let result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { responseMimeType: "application/json" }
-  });
-
-  let raw = await result.response.text();
-  let json;
-  try { json = JSON.parse(raw); }
-  catch { json = {}; }
-
-  let parts = json?.candidates?.[0]?.content?.parts || [];
-  let imagePart = parts.find(p => p.inlineData);
-
-  // ✅ If we already got an image → return it
-  if (imagePart?.inlineData?.data) {
-    return imagePart.inlineData.data;
+// Vertex AI Image Generation (Google Cloud) - replaces previous providers
+async function generateVertexImage(userPrompt) {
+  const project = process.env.GCP_PROJECT_ID;
+  const location = process.env.GCP_LOCATION || 'us-central1';
+  if (!project) throw new Error('Missing GCP_PROJECT_ID');
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    throw new Error('Missing GOOGLE_APPLICATION_CREDENTIALS');
   }
 
-  // ✅ Otherwise get a refined prompt from the text response
-  let textDescription =
-    parts.find(p => p.text)?.text ||
-    prompt + " -- convert this description into an image.";
+  // Basic heuristic: if prompt doesn't look like an image request, abort early
+  const isImageIntent = /\b(image|picture|photo|draw|art|logo|icon|design|generate|illustration|render|poster|wallpaper)\b/i.test(userPrompt);
+  if (!isImageIntent) {
+    const err = new Error('This prompt does not describe an image.');
+    err.code = 'NO_IMAGE_INTENT';
+    throw err;
+  }
 
-  // ✅ SECOND ATTEMPT forcing image generation
-  result = await model.generateContent({
-    contents: [{
-      role: "user",
-      parts: [{
-        text: `Generate an image based on this description: ${textDescription}`
-      }]
-    }],
-    generationConfig: { responseMimeType: "application/json" }
+  const vertex = new VertexAI({ project });
+  const model = vertex.getGenerativeModel({ model: 'imagegeneration@002', location });
+
+  const result = await model.generateImages({
+    prompt: String(userPrompt),
+    size: '1024x1024',
   });
 
-  raw = await result.response.text();
-
-  try { json = JSON.parse(raw); }
-  catch (e) {
-    console.error("Gemini second attempt invalid JSON:", raw);
-    throw new Error("Gemini returned invalid image data");
+  const base64 = result?.images?.[0]?.bytes || null;
+  if (!base64) {
+    throw new Error('Vertex did not return an image');
   }
-
-  parts = json?.candidates?.[0]?.content?.parts || [];
-  imagePart = parts.find(p => p.inlineData);
-
-  if (!imagePart?.inlineData?.data) {
-    console.error("Gemini still returned no image:", json);
-    throw new Error("Failed to generate image from Gemini");
-  }
-
-  return imagePart.inlineData.data;
+  // Materialize as Buffer then return as data URL
+  const buffer = Buffer.from(base64, 'base64');
+  return `data:image/png;base64,${buffer.toString('base64')}`;
 }
 
 // =====================================================
@@ -321,26 +293,18 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
   const { prompt } = req.body || {};
-
-  if (!prompt) {
-    return res.status(400).json({ success: false, error: "Prompt is required." });
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).json({ success: false, error: 'Prompt is required.' });
   }
-
   try {
-    // Gemini-only implementation
-    try {
-      const base64 = await generateGeminiImage(String(prompt));
-      if (!base64) {
-        return res.status(500).json({ success: false, error: 'Gemini returned no image' });
-      }
-      return res.json({ success: true, image: base64 });
-    } catch (error) {
-      console.error('❌ Gemini image generation failed:', error);
-      return res.status(500).json({ success: false, error: error.message });
-    }
+    const dataUrl = await generateVertexImage(prompt);
+    return res.json({ success: true, image: dataUrl });
   } catch (err) {
-    console.error('❌ Image generation error:', err);
-    return res.status(500).json({ success: false, error: err.message || 'Gemini image generation failed' });
+    if (err?.code === 'NO_IMAGE_INTENT') {
+      return res.status(400).json({ success: false, error: 'This prompt does not describe an image.' });
+    }
+    console.error('❌ Vertex image generation failed:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Vertex image generation failed' });
   }
 });
 
