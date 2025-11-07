@@ -36,11 +36,16 @@ async function generateGeminiImage(prompt) {
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
-  const result = await model.generateContent(String(prompt));
-  const base64 = result?.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-  return base64;
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: String(prompt) }]}],
+    generationConfig: { responseMimeType: 'application/json' }
+  });
+
+  const parts = result?.response?.candidates?.[0]?.content?.parts || [];
+  const inline = parts.find(p => p?.inlineData?.data);
+  return inline?.inlineData?.data || null;
 }
 
 // =====================================================
