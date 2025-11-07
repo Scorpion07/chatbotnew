@@ -10,96 +10,108 @@ const router = express.Router();
 // ---------- CONFIG ----------
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
-const TOKEN_EXPIRY = "7d"; // JWT validity
+const TOKEN_EXPIRY = "7d";
 
-// ---------- METHOD GUARDS (let CORS handle preflight) ----------
-router.all(["/signup", "/login", "/google"], (req, res, next) => {
-  if (req.method === "POST" || req.method === "OPTIONS") return next();
-  res.set("Allow", "POST, OPTIONS");
-  return res.sendStatus(405);
-});
+const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 // ---------- HELPERS ----------
 function generateToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email, isPremium: user.isPremium },
+    {
+      id: user.id,
+      email: user.email,
+      isPremium: user.isPremium,
+    },
     JWT_SECRET,
     { expiresIn: TOKEN_EXPIRY }
   );
 }
 
 function sanitizeUser(user) {
-  const { password, ...safeUser } = user.toJSON();
-  return safeUser;
+  const { password, ...safe } = user.toJSON();
+  return safe;
 }
 
-// ---------- SIGNUP ----------
+// ---------- METHOD GUARDS ----------
+router.all(["/signup", "/login", "/google"], (req, res, next) => {
+  if (req.method === "POST" || req.method === "OPTIONS") return next();
+  res.set("Allow", "POST, OPTIONS");
+  return res.sendStatus(405);
+});
+
+// ------------------------------------------------------
+// ✅ SIGNUP
+// ------------------------------------------------------
 router.post("/signup", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password)
-      return res.status(400).json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "Email and password required" });
 
     const existing = await User.findOne({ where: { email } });
-    if (existing) return res.status(409).json({ message: "User already exists" });
+    if (existing)
+      return res.status(409).json({ message: "User already exists" });
 
     const hashed = await bcrypt.hash(password, 8);
     const user = await User.create({ email, password: hashed });
-    const token = generateToken(user);
 
-    res.json({ user: sanitizeUser(user), token });
+    const token = generateToken(user);
+    return res.json({ user: sanitizeUser(user), token });
   } catch (err) {
     console.error("Signup error:", err);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 });
 
-// ---------- LOGIN ----------
+// ------------------------------------------------------
+// ✅ LOGIN
+// ------------------------------------------------------
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ where: { email } });
 
+    const user = await User.findOne({ where: { email } });
     if (!user || !user.password)
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: "Invalid credentials" });
 
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).json({ message: "Invalid email or password" });
+    if (!valid) return res.status(401).json({ message: "Invalid credentials" });
 
     const token = generateToken(user);
-    res.json({ user: sanitizeUser(user), token });
+    return res.json({ user: sanitizeUser(user), token });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 });
 
-// ---------- GOOGLE SIGN-IN ----------
+// ------------------------------------------------------
+// ✅ GOOGLE SIGN-IN
+// ------------------------------------------------------
 router.post("/google", async (req, res) => {
   try {
     const { credential } = req.body;
-    if (!credential) return res.status(400).json({ message: "Missing Google credential" });
-    if (!GOOGLE_CLIENT_ID || !googleClient) {
-      console.error("Google login error: GOOGLE_CLIENT_ID not configured");
-      return res.status(500).json({ message: "Server misconfiguration: Google client ID missing" });
+
+    if (!credential)
+      return res.status(400).json({ message: "Missing Google credential" });
+
+    if (!googleClient) {
+      console.error("Missing GOOGLE_CLIENT_ID");
+      return res.status(500).json({ message: "Google OAuth not configured" });
     }
 
-    // Verify Google ID token via Google JWKS
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
       audience: GOOGLE_CLIENT_ID,
     });
+
     const payload = ticket.getPayload();
-    if (!payload || payload.aud !== GOOGLE_CLIENT_ID) {
-      console.error("Invalid Google token: audience mismatch", { expected: GOOGLE_CLIENT_ID, got: payload?.aud });
+    if (!payload)
       return res.status(401).json({ message: "Invalid Google token" });
-    }
 
     const { email, name, picture, sub } = payload;
 
-    // Find or create user
     let user = await User.findOne({ where: { email } });
     if (!user) {
       user = await User.create({
@@ -110,79 +122,75 @@ router.post("/google", async (req, res) => {
         provider: "google",
       });
     } else {
-      user.googleId = user.googleId || sub;
-      user.avatar = picture;
+      if (!user.googleId) user.googleId = sub;
       user.name = name;
+      user.avatar = picture;
       await user.save();
     }
 
     const token = generateToken(user);
-    res.json({ user: sanitizeUser(user), token });
+    return res.json({ user: sanitizeUser(user), token });
   } catch (err) {
-    console.error("Google login error:", err?.message || err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Google login error:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 });
 
-// ---------- ME ----------
+// ------------------------------------------------------
+// ✅ /me (requires token in Authorization: Bearer XXX)
+// ------------------------------------------------------
 router.get("/me", async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ message: "Missing Authorization header" });
+    const auth = req.headers.authorization;
+    if (!auth)
+      return res.status(401).json({ message: "Missing Authorization header" });
 
-    const token = authHeader.split(" ")[1];
+    const token = auth.split(" ")[1];
     const decoded = jwt.verify(token, JWT_SECRET);
 
     const user = await User.findByPk(decoded.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    res.json({ user: sanitizeUser(user) });
+    return res.json({ user: sanitizeUser(user) });
   } catch (err) {
     console.error("Auth /me error:", err.message);
-    res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 });
 
-// ---------- LOGOUT (frontend clears token) ----------
+// ------------------------------------------------------
+// ✅ LOGOUT (frontend deletes token)
+// ------------------------------------------------------
 router.post("/logout", (req, res) => {
-  res.json({ message: "Logged out" });
+  return res.json({ message: "Logged out" });
 });
 
-export default router;
-
-// ---------- PREMIUM TOGGLE (WEBHOOK/ADMIN ONLY IN PRODUCTION) ----------
-// In production: require X-Admin-Secret header to prevent abuse.
-// In development: allow direct toggle for testing.
-router.post('/subscribe', authRequired, async (req, res) => {
+// ------------------------------------------------------
+// ✅ PREMIUM: SUBSCRIBE (requires token)
+// ------------------------------------------------------
+router.post("/subscribe", authRequired, async (req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      const secret = req.headers['x-admin-secret'];
-      if (!secret || secret !== process.env.ADMIN_API_SECRET) {
-        return res.status(403).json({ message: 'Forbidden' });
-      }
-    }
     req.user.isPremium = true;
     await req.user.save();
     return res.json({ ok: true, user: sanitizeUser(req.user) });
-  } catch (e) {
-    console.error('Subscribe error:', e.message);
-    return res.status(500).json({ message: 'Failed to subscribe' });
+  } catch (err) {
+    console.error("Subscribe error:", err);
+    return res.status(500).json({ message: "Failed to subscribe" });
   }
 });
 
-router.post('/unsubscribe', authRequired, async (req, res) => {
+// ------------------------------------------------------
+// ✅ PREMIUM: UNSUBSCRIBE (requires token)
+// ------------------------------------------------------
+router.post("/unsubscribe", authRequired, async (req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
-      const secret = req.headers['x-admin-secret'];
-      if (!secret || secret !== process.env.ADMIN_API_SECRET) {
-        return res.status(403).json({ message: 'Forbidden' });
-      }
-    }
     req.user.isPremium = false;
     await req.user.save();
     return res.json({ ok: true, user: sanitizeUser(req.user) });
-  } catch (e) {
-    console.error('Unsubscribe error:', e.message);
-    return res.status(500).json({ message: 'Failed to unsubscribe' });
+  } catch (err) {
+    console.error("Unsubscribe error:", err);
+    return res.status(500).json({ message: "Failed to unsubscribe" });
   }
 });
+
+export default router;
