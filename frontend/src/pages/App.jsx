@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { config, getApiUrl } from '../config.js';
-import axios from 'axios';
+import api from '../lib/apiClient.js';
+import { clearAuth } from '../lib/auth.js';
 import Home from './Home.jsx';
 import Admin from './Admin.jsx';
 import Chat from './Chat.jsx';
@@ -20,16 +21,8 @@ export default function App() {
   const [showBotsMenu, setShowBotsMenu] = useState(false);
 
   const loadUser = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setAuthed(false);
-      setUser(null);
-      return;
-    }
     try {
-      const res = await axios.get(getApiUrl('/api/auth/me'), {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get('/api/auth/me');
       setAuthed(true);
       setUser(res.data?.user || null);
     } catch {
@@ -44,18 +37,29 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
-    axios.get(getApiUrl('/api/bots'))
+    api.get('/api/bots')
       .then(r => { if (mounted) setBots(r.data || []); })
       .catch(() => setBots([]));
     return () => { mounted = false; };
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    clearAuth();
     setAuthed(false);
     setUser(null);
     setView('home');
   };
+
+  // Listen for global 401-triggered logout events
+  useEffect(() => {
+    const onLogout = () => {
+      setAuthed(false);
+      setUser(null);
+      setView('login');
+    };
+    window.addEventListener('auth:logout', onLogout);
+    return () => window.removeEventListener('auth:logout', onLogout);
+  }, []);
   return (
     <div className='min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 dark:from-gray-900 dark:to-gray-950 dark:text-gray-100'>
   <header className='bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800'>

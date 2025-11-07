@@ -24,6 +24,7 @@ export const config = {
   auth: {
     googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE",
     tokenKey: "token",
+    userKey: "user",
     loginRedirect: "chat",
     logoutRedirect: "home"
   },
