@@ -29,23 +29,37 @@ const openai = new OpenAI({
 
 // (Flux/Replicate removed)
 
-// Gemini-only image generation via Google Generative AI
+// Gemini-only image generation via Google Generative AI (exact implementation)
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+
 async function generateGeminiImage(prompt) {
-  if (!process.env.GOOGLE_API_KEY) {
-    throw new Error("Missing GOOGLE_API_KEY");
-  }
-
-  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: String(prompt) }]}],
-    generationConfig: { responseMimeType: 'application/json' }
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash-exp",
   });
 
-  const parts = result?.response?.candidates?.[0]?.content?.parts || [];
-  const inline = parts.find(p => p?.inlineData?.data);
-  return inline?.inlineData?.data || null;
+  const result = await model.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: "application/json" }
+  });
+
+  const raw = await result.response.text();
+
+  let json;
+  try { json = JSON.parse(raw); }
+  catch (e) {
+    console.error("Gemini invalid JSON:", raw);
+    throw new Error("Gemini returned invalid data");
+  }
+
+  const base64 = json?.candidates?.[0]?.content?.parts
+    ?.find(p => p.inlineData)?.inlineData?.data;
+
+  if (!base64) {
+    console.error("Gemini missing inlineData:", json);
+    throw new Error("No image returned from Gemini");
+  }
+
+  return base64;
 }
 
 // =====================================================
