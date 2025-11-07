@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import api, { fetchWithAuth } from '../lib/apiClient.js';
+import axios from 'axios';
+import { getApiUrl } from '../config.js';
 import BotGrid from '../components/BotGrid.jsx';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -61,7 +62,9 @@ export default function Chat({ setView }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      api.get('/api/auth/me').then(res => setIsPremium(!!res.data?.user?.isPremium)).catch(() => {});
+      axios.get(getApiUrl('/api/auth/me'), {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => setIsPremium(!!res.data?.user?.isPremium)).catch(() => {});
     }
     // Clear any stale local counts (we now rely on server usage)
     try { localStorage.removeItem('queryCount'); } catch {}
@@ -71,7 +74,9 @@ export default function Chat({ setView }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    api.get('/api/usage').then(res => {
+    axios.get(getApiUrl('/api/usage'), {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => {
       const records = res.data?.usage || [];
       const map = {};
       records.forEach(u => { map[u.botName] = u.count || 0; });
@@ -236,24 +241,17 @@ export default function Chat({ setView }) {
     try {
       let response;
       if (botType === 'image') {
-        // Call backend image endpoint via centralized client
-        const res = await api.post('/api/openai/image', { prompt: userMessage.content });
-        if (res.data?.success === false) {
-          response = {
-            role: 'assistant',
-            content: res.data.error || 'Image generation failed.',
-            model: modelLabel,
-            type: 'image'
-          };
-        } else {
-          const url = res.data?.image || res.data?.url;
-          response = {
-            role: 'assistant',
-            content: url ? `![Generated Image](${url})` : 'Image generation failed.',
-            model: modelLabel,
-            type: 'image'
-          };
-        }
+        // Call backend image endpoint
+        const token = localStorage.getItem('token');
+        const res = await axios.post(getApiUrl('/api/openai/image'), { prompt: userMessage.content }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        response = {
+          role: 'assistant',
+          content: res.data.url ? `![Generated Image](${res.data.url})` : 'Image generation failed.',
+          model: modelLabel,
+          type: 'image'
+        };
       } else if (botType === 'search') {
         // For now, keep demo search response
         response = {
@@ -264,10 +262,11 @@ export default function Chat({ setView }) {
           results: []
         };
   } else if (botType === 'audio') {
-        // Call backend audio endpoint and play audio using fetchWithAuth
-        const audioRes = await fetchWithAuth('/api/openai/audio', {
+        // Call backend audio endpoint and play audio
+        const token = localStorage.getItem('token');
+        const audioRes = await fetch(getApiUrl('/api/openai/audio'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ text: userMessage.content })
         });
         if (audioRes.ok) {
@@ -291,11 +290,12 @@ export default function Chat({ setView }) {
         }
       } else {
         // Call backend chat endpoint with streaming
+        const token = localStorage.getItem('token');
         // Ensure we have a conversation id
         let convId = activeConversation;
         if (!convId) {
           try {
-            const created = await api.post('/api/conversations', { botName: selectedModel });
+            const created = await axios.post(getApiUrl('/api/conversations'), { botName: selectedModel }, { headers: { Authorization: `Bearer ${token}` } });
             convId = created.data.id;
             const entry = { id: convId, title: created.data.title || `Chat ${convId}`, date: new Date(created.data.updatedAt || created.data.createdAt).toLocaleDateString() };
             setConversations(prev => [entry, ...prev]);
@@ -308,9 +308,12 @@ export default function Chat({ setView }) {
 
         // Start streaming
         const contentWithImage = selectedImagePreview ? `${userMessage.content}\n\n![Uploaded Image](${selectedImagePreview})` : userMessage.content;
-        const streamRes = await fetchWithAuth('/api/openai/chat/stream', {
+        const streamRes = await fetch(getApiUrl('/api/openai/chat/stream'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({ message: contentWithImage, botName: selectedModel, conversationId: convId })
         });
 
@@ -423,7 +426,9 @@ export default function Chat({ setView }) {
     const token = localStorage.getItem('token');
     if (!token) { setView?.('login'); return; }
     try {
-      const res = await api.post('/api/conversations', { botName: selectedModel });
+      const res = await axios.post(getApiUrl('/api/conversations'), { botName: selectedModel }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const conv = res.data;
       const entry = { id: conv.id, title: conv.title || `Chat ${conv.id}`, date: new Date(conv.updatedAt || conv.createdAt).toLocaleDateString() };
       setConversations(prev => [entry, ...prev]);
@@ -446,7 +451,9 @@ export default function Chat({ setView }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    api.get('/api/conversations').then(res => {
+    axios.get(getApiUrl('/api/conversations'), {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => {
       const list = (res.data || []).map(c => ({
         id: c.id,
         title: c.title || `Chat ${c.id}`,
@@ -463,7 +470,9 @@ export default function Chat({ setView }) {
     if (!activeConversation) return;
     const token = localStorage.getItem('token');
     if (!token) return;
-    api.get(`/api/conversations/${activeConversation}`).then(res => {
+    axios.get(getApiUrl(`/api/conversations/${activeConversation}`), {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => {
       const msgs = (res.data?.messages || []).map(m => ({
         role: m.role,
         content: m.content,
@@ -486,7 +495,7 @@ export default function Chat({ setView }) {
 
   useEffect(() => {
     let mounted = true;
-    api.get('/api/bots')
+    axios.get(getApiUrl('/api/bots'))
       .then(r => { if (mounted) setBots(r.data); })
       .catch((err) => {
         console.error('Error fetching bots:', err);
@@ -524,7 +533,9 @@ export default function Chat({ setView }) {
       const formData = new FormData();
       formData.append('audio', blob, 'voice.webm');
       formData.append('model', selectedModel);
-      const res = await api.post('/api/openai/transcribe', formData);
+      const res = await axios.post(getApiUrl('/api/openai/transcribe'), formData, {
+        headers: { 'Content-Type': 'multipart/form-data', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
       setMessages(prev => [...prev, {
         role: 'user',
         content: '[Voice message]',
@@ -585,7 +596,7 @@ export default function Chat({ setView }) {
                     e.stopPropagation();
                     const token = localStorage.getItem('token');
                     if (!token) return;
-                    api.delete(`/api/conversations/${conv.id}`)
+                    axios.delete(getApiUrl(`/api/conversations/${conv.id}`), { headers: { Authorization: `Bearer ${token}` } })
                       .then(() => {
                         setConversations(prev => prev.filter(c => c.id !== conv.id));
                         if (activeConversation === conv.id) {

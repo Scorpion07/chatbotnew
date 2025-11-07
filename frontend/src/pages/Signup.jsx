@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import config, { getApiUrl, isFeatureEnabled } from '../config.js';
-import api from '../lib/apiClient.js';
-import { setAuth } from '../lib/auth.js';
 
 const hasValidGoogleClientId = () =>
   typeof config.auth.googleClientId === 'string' &&
@@ -32,10 +31,11 @@ export default function Signup({ onSignup, setView }) {
       setLoading(true);
       setError('');
 
-      const res = await api.post('/api/auth/google', {
+      const res = await axios.post(getApiUrl('/api/auth/google'), {
         credential: response.credential,
       });
-      setAuth({ token: res.data.token, user: res.data.user });
+
+      localStorage.setItem(config.auth.tokenKey, res.data.token);
       setSuccess(true);
       onSignup?.(res.data.user);
     } catch (err) {
@@ -70,17 +70,20 @@ export default function Signup({ onSignup, setView }) {
     setError('');
     try {
       // Step 1: Signup user
-  await api.post('/api/auth/signup', { email, password });
+      await axios.post(getApiUrl('/api/auth/signup'), { email, password });
 
       // Step 2: Immediately login to get token
-      const loginRes = await api.post('/api/auth/login', { email, password });
+      const loginRes = await axios.post(getApiUrl('/api/auth/login'), {
+        email,
+        password,
+      });
 
       // Step 3: Store token
-  setAuth({ token: loginRes.data.token, user: loginRes.data.user });
+      localStorage.setItem(config.auth.tokenKey, loginRes.data.token);
 
       // Step 4: Mark success and call parent
       setSuccess(true);
-  onSignup?.(loginRes.data.user);
+      onSignup?.(loginRes.data);
 
       // Step 5: Optional redirect to chat/home
       setTimeout(() => setView?.('chat'), 1000);

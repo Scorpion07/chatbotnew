@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import config, { getApiUrl, isFeatureEnabled } from '../config.js';
-import api from '../lib/apiClient.js';
-import { setAuth } from '../lib/auth.js';
 
 // Consider Google Client ID valid only if it looks like a real Web Client ID
 const hasValidGoogleClientId = () =>
@@ -31,10 +30,11 @@ export default function Login({ onLogin, setView }) {
       setLoading(true);
       setError('');
       
-      const res = await api.post('/api/auth/google', {
+      const res = await axios.post(getApiUrl('/api/auth/google'), {
         credential: response.credential
       });
-      setAuth({ token: res.data.token, user: res.data.user });
+      
+      localStorage.setItem(config.auth.tokenKey, res.data.token);
       onLogin?.(res.data.user);
     } catch (err) {
       setError(err.response?.data?.error || 'Google sign-in failed');
@@ -66,9 +66,9 @@ export default function Login({ onLogin, setView }) {
     setLoading(true);
     setError('');
     try {
-  const res = await api.post('/api/auth/login', { email, password });
-  setAuth({ token: res.data.token, user: res.data.user });
-  onLogin?.(res.data.user);
+      const res = await axios.post(getApiUrl('/api/auth/login'), { email, password });
+      localStorage.setItem(config.auth.tokenKey, res.data.token);
+      onLogin?.(res.data.isPremium);
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {
