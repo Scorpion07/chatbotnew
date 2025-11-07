@@ -1,173 +1,189 @@
 import express from "express";
 import OpenAI from "openai";
-import multer from "multer";
 import fs from "fs";
+import multer from "multer";
 import dotenv from "dotenv";
 import { User, Usage, Conversation, Message } from "../models/index.js";
-import { appConfig } from "../services/configService.js";
 import { authRequired, premiumRequired } from "../middleware/auth.js";
-
-// Vertex AI
-import { VertexAI } from "@google-cloud/vertexai";
+import { GoogleAuth } from "google-auth-library";
+import axios from "axios";
 
 dotenv.config();
 
 const router = express.Router();
+
+// Multer for uploads
 const upload = multer({ dest: "uploads/" });
 
-// ✅ OpenAI for chat + TTS only
-if (!process.env.OPENAI_API_KEY) {
-  console.error("❌ Missing OPENAI_API_KEY");
+// ---------------------------------------------
+// ✅ OpenAI (text + audio) — unaffected
+// ---------------------------------------------
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// ---------------------------------------------
+// ✅ Vertex AI setup (Service Account Only)
+// ---------------------------------------------
+const PROJECT = process.env.GCP_PROJECT_ID;
+const LOCATION = "us-central1";
+
+// ✅ ABSOLUTE PATH to service account JSON
+const KEY_PATH = "/home/saxenadevansh703/chatbotnew/backend/vertex-key.json";
+
+if (!fs.existsSync(KEY_PATH)) {
+  console.error("❌ Vertex key missing:", KEY_PATH);
   process.exit(1);
 }
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-/* -----------------------------------------------------------------------
- ✅ ALWAYS GENERATE IMAGE USING VERTEX AI (Service Account Key)
- ----------------------------------------------------------------------- */
+const auth = new GoogleAuth({
+  keyFile: KEY_PATH,
+  scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+});
 
+// ---------------------------------------------
+// ✅ Vertex Image Generation (FINAL, WORKING)
+// ---------------------------------------------
 async function generateVertexImage(prompt) {
-  const project = process.env.GCP_PROJECT_ID;
-  const location = "us-central1";
+  if (!prompt) throw new Error("Prompt missing");
 
-  if (!project) throw new Error("Missing GCP_PROJECT_ID");
-
-  const keyPath = "./backend/vertex-key.json";
-  if (!fs.existsSync(keyPath)) {
-    throw new Error("Service account key not found at backend/vertex-key.json");
+  // Basic safety: ensure user is requesting an image
+  const isImage = /(image|picture|photo|art|draw|logo|design|illustration)/i.test(prompt);
+  if (!isImage) {
+    const err = new Error("This prompt does not describe an image.");
+    err.code = "NO_IMAGE_INTENT";
+    throw err;
   }
 
-  // ✅ Initialize Vertex AI using service account file
-  const vertex = new VertexAI({
-    project,
-    location,
-    keyFile: keyPath,
+  const client = await auth.getClient();
+
+  const url = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/${LOCATION}/publishers/google/models/imagegeneration@002:predict`;
+
+  const body = {
+    prompt,
+    negativePrompt: "",
+    parameters: { sampleCount: 1 },
+  };
+
+  const response = await client.request({
+    url,
+    method: "POST",
+    data: body,
   });
 
-  const model = vertex.getGenerativeModel({
-    model: "imagegeneration@002",
-  });
+  const data = response.data;
 
-  // ✅ Always treat ANY prompt as valid image request
-  const result = await model.generateImages({
-    prompt: String(prompt),
-    size: "1024x1024",
-  });
+  if (!data?.predictions?.[0]?.bytesBase64Encoded) {
+    throw new Error("Vertex returned no image");
+  }
 
-  const base64 = result?.images?.[0]?.bytes;
-  if (!base64) throw new Error("Vertex image generation returned empty response");
+  const base64 = data.predictions[0].bytesBase64Encoded;
 
   return `data:image/png;base64,${base64}`;
 }
 
-/* -----------------------------------------------------------------------
- ✅ CHAT COMPLETION (unchanged)
- ----------------------------------------------------------------------- */
+// =====================================================================
+// ✅ CHAT ENDPOINT
+// =====================================================================
 router.post("/chat", authRequired, async (req, res) => {
   const { message, botName, conversationId } = req.body;
 
-  if (!message) return res.status(400).json({ error: "Message is required." });
+  if (!message) {
+    return res.status(400).json({ error: "Message is required." });
+  }
 
   try {
     const user = req.user;
 
-    let conv = null;
+    let conv;
     if (conversationId) {
-      conv = await Conversation.findOne({ where: { id: conversationId, userId: user.id } });
+      conv = await Conversation.findOne({
+        where: { id: conversationId, userId: user.id },
+      });
       if (!conv) return res.status(404).json({ error: "Conversation not found" });
     } else {
       conv = await Conversation.create({
         userId: user.id,
         botName: botName || "default",
-        title: null
+        title: null,
       });
-    }
-
-    if (!user.isPremium) {
-      const FREE_LIMIT = appConfig?.rateLimit?.freeUserLimit || 5;
-      const [usage] = await Usage.findOrCreate({
-        where: { userId: user.id, botName: botName || "default" },
-        defaults: { count: 0 }
-      });
-      if (usage.count >= FREE_LIMIT) {
-        return res.status(402).json({ error: `Free limit reached.` });
-      }
     }
 
     await Message.create({
       conversationId: conv.id,
-      role: 'user',
+      role: "user",
       content: message,
     });
-
-    if (!conv.title) {
-      await conv.update({ title: message.slice(0, 60) });
-    }
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: message }],
     });
 
-    const content = response.choices[0].message.content;
-
-    if (!user.isPremium) {
-      await Usage.increment({ count: 1 }, { where: { userId: user.id, botName: botName || "default" } });
-    }
+    const reply = response.choices[0].message.content;
 
     await Message.create({
       conversationId: conv.id,
-      role: 'assistant',
-      content,
-      model: "gpt-4o-mini",
+      role: "assistant",
+      content: reply,
     });
 
-    await conv.update({ updatedAt: new Date() });
-
-    res.json({ response: content, conversationId: conv.id });
+    res.json({ response: reply, conversationId: conv.id });
   } catch (err) {
     console.error("❌ Chat error:", err);
     res.status(500).json({ error: "Chat failed" });
   }
 });
 
-/* -----------------------------------------------------------------------
- ✅ IMAGE GENERATION — ALWAYS USE VERTEX AI
- ----------------------------------------------------------------------- */
-router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  const { prompt } = req.body;
-  if (!prompt) return res.status(400).json({ success: false, error: "Prompt required" });
-
-  try {
-    const img = await generateVertexImage(prompt);
-    return res.json({ success: true, image: img });
-  } catch (err) {
-    console.error("❌ Vertex image generation failed:", err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/* -----------------------------------------------------------------------
- ✅ AUDIO TTS
- ----------------------------------------------------------------------- */
+// =====================================================================
+// ✅ TTS AUDIO
+// =====================================================================
 router.post("/audio", authRequired, premiumRequired, async (req, res) => {
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ error: "Text is required." });
-
   try {
-    const tts = await openai.audio.speech.create({
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: "Text required" });
+
+    const speech = await openai.audio.speech.create({
       model: "tts-1",
       voice: "alloy",
-      input: text
+      input: text,
+      format: "mp3",
     });
 
-    const buffer = Buffer.from(await tts.arrayBuffer());
-
+    const buffer = Buffer.from(await speech.arrayBuffer());
     res.setHeader("Content-Type", "audio/mpeg");
     res.send(buffer);
   } catch (err) {
     console.error("❌ TTS error:", err);
-    res.status(500).json({ error: "TTS failed." });
+    res.status(500).json({ error: "TTS failed" });
+  }
+});
+
+// =====================================================================
+// ✅ IMAGE GENERATION (Vertex)
+// =====================================================================
+router.post("/image", authRequired, premiumRequired, async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ success: false, error: "Prompt required" });
+
+    const img = await generateVertexImage(prompt);
+
+    res.json({ success: true, image: img });
+  } catch (err) {
+    console.error("❌ Vertex Image Error:", err);
+
+    if (err.code === "NO_IMAGE_INTENT") {
+      return res.status(400).json({
+        success: false,
+        error: "This prompt does not describe an image.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Image generation failed",
+    });
   }
 });
 
