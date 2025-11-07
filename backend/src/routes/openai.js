@@ -1,5 +1,6 @@
 import express from "express";
 import OpenAI from "openai";
+import Replicate from "replicate";
 import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
@@ -25,6 +26,9 @@ if (!process.env.OPENAI_API_KEY) {
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Replicate client for FLUX image generation
+const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN || '' });
 
 // =====================================================
 // 🧠 TEXT CHAT ENDPOINT (with auth and free-tier limit)
@@ -255,9 +259,7 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  let { prompt, size = "1024x1024", quality = "high" } = req.body || {};
-  const allowedSizes = ["1024x1024", "1024x1536", "1536x1024", "auto"];
-  if (!allowedSizes.includes(size)) size = "1024x1024";
+  let { prompt } = req.body || {};
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required." });
@@ -265,44 +267,40 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
 
   try {
     // Clean up prompt: remove markdown or base64 image text
-    prompt = prompt.replace(/!\[.*?\]\(.*?\)/g, "").trim();
+    prompt = String(prompt).replace(/!\[.*?\]\(.*?\)/g, "").trim();
     if (prompt === "") {
       prompt = "Generate a creative image inspired by the uploaded photo.";
     }
 
-    const response = await openai.images.generate({
-      model: "gpt-image-1",
-      prompt,
-      n: 1,
-      size,
-      quality
-    });
-
-    // Prefer direct URL if provided
-    const directUrl = response?.data?.[0]?.url;
-    const b64 = response?.data?.[0]?.b64_json; // Some SDK versions still return base64 without specifying response_format
-
-    if (directUrl) {
-      return res.json({ url: directUrl });
-    } else if (b64) {
-      const dataUrl = `data:image/png;base64,${b64}`;
-      return res.json({ url: dataUrl });
-    } else {
-      return res.status(500).json({ error: 'Image generation failed: empty response.' });
+    if (!process.env.REPLICATE_API_TOKEN) {
+      console.error('❌ Flux image generation failed: missing REPLICATE_API_TOKEN');
+      return res.status(500).json({ error: 'Flux image generation failed' });
     }
+
+    // Log clear usage of FLUX via Replicate
+    console.log('🖼️  Using FLUX via Replicate: model=black-forest-labs/flux-schnell');
+
+    const output = await replicate.run(
+      'black-forest-labs/flux-schnell',
+      { input: { prompt } }
+    );
+
+    let url = null;
+    if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
+      url = output[0];
+    } else if (output && typeof output === 'object') {
+      url = output.url || output.image || null;
+    }
+
+    if (!url) {
+      console.error('❌ Flux image generation failed: unexpected output');
+      return res.status(500).json({ error: 'Flux image generation failed' });
+    }
+
+    return res.json({ url });
   } catch (err) {
-    if (err.code === "billing_hard_limit_reached") {
-      return res.status(402).json({
-        error:
-          "Your OpenAI account has reached its billing limit. Please add funds or wait for the next billing cycle.",
-      });
-    }
-
-    console.error("❌ Image generation error:", err);
-    res.status(500).json({
-      error: "Image generation failed. Please verify your API key or prompt.",
-      details: err.message,
-    });
+    console.error('❌ Flux image generation failed:', err);
+    return res.status(500).json({ error: 'Flux image generation failed' });
   }
 });
 
