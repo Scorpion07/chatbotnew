@@ -32,18 +32,24 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ---------------------------------------------
 // Vertex AI — Imagen 4
-// Uses: publishers/google/models/imagen-4.0:predict
+// KEY PATH FIXED ✅
 // ---------------------------------------------
 const VERTEX_LOCATION = "us-central1";
-const VERTEX_KEY_PATH = path.resolve(process.cwd(), "backend/vertex-key.json");
+
+// ✅ FIXED
+const VERTEX_KEY_PATH = path.join(__dirname, "..", "..", "vertex-key.json");
 
 function loadServiceAccount() {
-  if (!fs.existsSync(VERTEX_KEY_PATH)) {
+  try {
+    if (!fs.existsSync(VERTEX_KEY_PATH)) {
+      throw new Error(`vertex-key.json NOT FOUND at ${VERTEX_KEY_PATH}`);
+    }
+    return JSON.parse(fs.readFileSync(VERTEX_KEY_PATH, "utf8"));
+  } catch (e) {
     throw new Error(
-      `Service account key missing at ${VERTEX_KEY_PATH}`
+      `Service account key invalid or missing at ${VERTEX_KEY_PATH} → ${e.message}`
     );
   }
-  return JSON.parse(fs.readFileSync(VERTEX_KEY_PATH, "utf8"));
 }
 
 async function getAccessToken() {
@@ -57,7 +63,7 @@ async function getAccessToken() {
   return token.token;
 }
 
-// ✅ Imagen 4 — Generate image
+// ✅ Imagen 4 — Correct implementation
 async function generateImagen4(prompt, aspectRatio = "1:1") {
   const sa = loadServiceAccount();
   const projectId = sa.project_id;
@@ -72,9 +78,7 @@ async function generateImagen4(prompt, aspectRatio = "1:1") {
         aspectRatio
       }
     ],
-    parameters: {
-      quality: "high"
-    }
+    parameters: { quality: "high" }
   };
 
   const resp = await fetch(url, {
@@ -95,8 +99,6 @@ async function generateImagen4(prompt, aspectRatio = "1:1") {
     throw err;
   }
 
-  // Imagen 4 returns:
-  // predictions[0].bytesBase64Encoded
   const pred = json?.predictions?.[0];
   const b64 = pred?.bytesBase64Encoded;
 
