@@ -273,16 +273,21 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       prompt,
       n: 1,
       size,
-      quality,
-      response_format: 'b64_json'
+      quality
     });
 
-    const b64 = response?.data?.[0]?.b64_json;
-    if (!b64) {
+    // Prefer direct URL if provided
+    const directUrl = response?.data?.[0]?.url;
+    const b64 = response?.data?.[0]?.b64_json; // Some SDK versions still return base64 without specifying response_format
+
+    if (directUrl) {
+      return res.json({ url: directUrl });
+    } else if (b64) {
+      const dataUrl = `data:image/png;base64,${b64}`;
+      return res.json({ url: dataUrl });
+    } else {
       return res.status(500).json({ error: 'Image generation failed: empty response.' });
     }
-    const dataUrl = `data:image/png;base64,${b64}`;
-    res.json({ url: dataUrl });
   } catch (err) {
     if (err.code === "billing_hard_limit_reached") {
       return res.status(402).json({
