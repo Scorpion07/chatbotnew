@@ -36,14 +36,11 @@ async function generateGeminiImage(prompt) {
   }
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro-vision" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const result = await model.generateImage({
-    prompt,
-  });
-
-  // Return base64 image string or null
-  return result?.images?.[0]?.image || null;
+  const result = await model.generateContent(String(prompt));
+  const base64 = result?.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+  return base64;
 }
 
 // =====================================================
