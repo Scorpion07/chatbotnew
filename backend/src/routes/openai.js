@@ -85,7 +85,7 @@ async function generateVertexImage(userPrompt) {
     ],
     parameters: {
       sampleCount: 1,
-      sampleImageSize: "1024x1024"
+      sampleImageSize: "768x768"
     }
   };
 
