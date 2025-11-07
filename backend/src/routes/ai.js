@@ -20,14 +20,38 @@ export async function generateFluxImage(prompt, size = '1024x1024') {
   // Log usage clearly
   console.log(`🖼️  Using FLUX via Replicate: model=black-forest-labs/flux-1.1-pro size=${size}`);
 
-  const input = {
-    prompt,
-    size,
-    output_format: 'png',
-  };
-
   // Replicate SDK: run returns the prediction output directly
-  const output = await replicate.run('black-forest-labs/flux-1.1-pro', { input });
+  let output;
+  try {
+    output = await replicate.run(
+      "black-forest-labs/flux-schnell",
+      {
+        input: {
+          prompt,
+          num_outputs: 1
+        }
+      }
+    );
+  } catch (error) {
+    if (error.response) {
+      let errJson = null;
+      try {
+        errJson = await error.response.json();
+      } catch (_) {}
+
+      console.error("🔥 FLUX API ERROR JSON:", errJson);
+      console.error("🔥 FLUX RAW ERROR:", error);
+      throw new Error('Flux failed');
+    } else {
+      console.error("🔥 FLUX UNKNOWN ERROR:", error);
+      throw new Error(error.message);
+    }
+  }
+
+  // Log final image URL when available
+  if (Array.isArray(output) && output[0]) {
+    console.log("✅ Flux image:", output[0]);
+  }
 
   // Output is typically an array of URLs; return first string URL
   if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
