@@ -19,7 +19,8 @@
     "openai": "^6.6.0",
     "sequelize": "^6.32.1",
     "socket.io": "^4.7.2",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "@google/generative-ai": "^0.8.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

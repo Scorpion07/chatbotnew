@@ -1,6 +1,7 @@
 import express from "express";
 import OpenAI from "openai";
 import Replicate from "replicate";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import multer from "multer";
 import fs from "fs";
 import dotenv from "dotenv";
@@ -29,6 +30,26 @@ const openai = new OpenAI({
 
 // Replicate client for FLUX image generation
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN || '' });
+
+// Gemini image generation via Google Generative AI
+async function generateGeminiImage(prompt) {
+  if (!process.env.GOOGLE_API_KEY) {
+    throw new Error("Missing GOOGLE_API_KEY");
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "models/imagegeneration" });
+
+  const result = await model.generateImage({
+    prompt,
+    size: "1024x1024",
+  });
+
+  // Ensure consistent output format
+  return {
+    base64: result.images?.[0]?.image || null,
+  };
+}
 
 // =====================================================
 // 🧠 TEXT CHAT ENDPOINT (with auth and free-tier limit)
@@ -259,7 +280,7 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  let { prompt } = req.body || {};
+  let { prompt, provider } = req.body || {};
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required." });
@@ -272,12 +293,23 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       prompt = "Generate a creative image inspired by the uploaded photo.";
     }
 
+    // Handle Gemini provider explicitly without affecting other integrations
+    if (provider === "gemini") {
+      try {
+        const resObj = await generateGeminiImage(prompt);
+        return res.json(resObj);
+      } catch (error) {
+        console.error("❌ Gemini image generation failed:", error);
+        return res.status(500).json({ error: "Gemini image generation failed" });
+      }
+    }
+
     if (!process.env.REPLICATE_API_TOKEN) {
       console.error('❌ Flux image generation failed: missing REPLICATE_API_TOKEN');
       return res.status(500).json({ error: 'Flux image generation failed' });
     }
 
-    // Log clear usage of FLUX via Replicate
+  // Log clear usage of FLUX via Replicate
     console.log('🖼️  Using FLUX via Replicate: model=black-forest-labs/flux-schnell');
 
     // FLUX image generation with revised error handling
