@@ -255,7 +255,7 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  let { prompt, size = "512x512", quality = "standard" } = req.body || {};
+  let { prompt, size = "512x512", quality = "high" } = req.body || {};
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required." });
