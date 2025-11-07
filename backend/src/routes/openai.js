@@ -1,5 +1,6 @@
 import express from "express";
 import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import Replicate from "replicate";
 import multer from "multer";
 import fs from "fs";
@@ -29,6 +30,28 @@ const openai = new OpenAI({
 
 // Replicate client for FLUX image generation
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN || '' });
+
+// ==============================
+// Gemini (Imagen) helper
+// ==============================
+async function generateGeminiImage(prompt) {
+  if (!process.env.GOOGLE_API_KEY) {
+    throw new Error('Missing GOOGLE_API_KEY');
+  }
+
+  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "models/imagegeneration" });
+
+  const result = await model.generateImage({
+    prompt: prompt,
+    size: "1024x1024",
+  });
+
+  // return base64 as specified
+  return {
+    base64: result.images?.[0]?.image
+  };
+}
 
 // =====================================================
 // 🧠 TEXT CHAT ENDPOINT (with auth and free-tier limit)
@@ -259,13 +282,30 @@ router.post("/transcribe", authRequired, premiumRequired, upload.single("audio")
 // 🖼️ IMAGE GENERATION ENDPOINT
 // =====================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  let { prompt } = req.body || {};
+  let { prompt, provider } = req.body || {};
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required." });
   }
 
   try {
+    // If provider is Gemini, route to Gemini generator
+    if (provider === 'gemini') {
+      try {
+        const { base64 } = await generateGeminiImage(prompt);
+        if (!base64) {
+          return res.status(500).json({ error: 'Gemini image generation failed' });
+        }
+        // Keep the same response shape as other providers (url field)
+        return res.json({ url: `data:image/png;base64,${base64}` });
+      } catch (err) {
+        console.error('❌ Gemini image generation failed:', err);
+        if (String(err?.message || '').includes('GOOGLE_API_KEY')) {
+          return res.status(500).json({ error: 'Gemini image generation failed: missing GOOGLE_API_KEY' });
+        }
+        return res.status(500).json({ error: 'Gemini image generation failed' });
+      }
+    }
     // Clean up prompt: remove markdown or base64 image text
     prompt = String(prompt).replace(/!\[.*?\]\(.*?\)/g, "").trim();
     if (prompt === "") {
@@ -277,25 +317,21 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
       return res.status(500).json({ error: 'Flux image generation failed' });
     }
 
-    // Log clear usage of FLUX via Replicate
+  // Log clear usage of FLUX via Replicate
     console.log('🖼️  Using FLUX via Replicate: model=black-forest-labs/flux-schnell');
 
     // FLUX image generation with revised error handling
     let output;
     try {
-      const out = await replicate.run(
+      output = await replicate.run(
         "black-forest-labs/flux-schnell",
         {
           input: {
-            prompt: prompt,
-            guidance_scale: 3.0,
-            num_inference_steps: 28,
-            num_outputs: 1,
-            seed: null
+            prompt,
+            num_outputs: 1
           }
         }
       );
-      output = out;
     } catch (error) {
       if (error.response) {
         let errJson = null;
@@ -303,19 +339,10 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
           errJson = await error.response.json();
         } catch (_) {}
 
-        // Additional requested error logs
-        try {
-          const text = await error.response.text();
-          console.error("🔥 FLUX ERROR RAW TEXT:", text);
-        } catch (_) {}
-        console.error("🔥 FLUX ERROR OBJECT:", error);
-
         console.error("🔥 FLUX API ERROR JSON:", errJson);
         console.error("🔥 FLUX RAW ERROR:", error);
         return res.status(500).json({ error: "Flux failed", details: errJson });
       } else {
-        // Additional requested error log
-        console.error("🔥 FLUX ERROR OBJECT:", error);
         console.error("🔥 FLUX UNKNOWN ERROR:", error);
         return res.status(500).json({ error: error.message });
       }

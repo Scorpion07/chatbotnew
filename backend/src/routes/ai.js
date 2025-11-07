@@ -23,29 +23,16 @@ export async function generateFluxImage(prompt, size = '1024x1024') {
   // Replicate SDK: run returns the prediction output directly
   let output;
   try {
-    const out = await replicate.run(
+    output = await replicate.run(
       "black-forest-labs/flux-schnell",
       {
         input: {
-          prompt: prompt,
-          guidance_scale: 3.0,
-          num_inference_steps: 28,
-          num_outputs: 1,
-          seed: null
+          prompt,
+          num_outputs: 1
         }
       }
     );
-    output = out;
   } catch (error) {
-    // Additional requested error logs
-    if (error.response) {
-      try {
-        const text = await error.response.text();
-        console.error("🔥 FLUX ERROR RAW TEXT:", text);
-      } catch (_) {}
-    }
-    console.error("🔥 FLUX ERROR OBJECT:", error);
-
     if (error.response) {
       let errJson = null;
       try {
