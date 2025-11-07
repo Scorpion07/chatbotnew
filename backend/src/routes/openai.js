@@ -283,15 +283,19 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
     // FLUX image generation with revised error handling
     let output;
     try {
-      output = await replicate.run(
+      const out = await replicate.run(
         "black-forest-labs/flux-schnell",
         {
           input: {
-            prompt,
-            num_outputs: 1
+            prompt: prompt,
+            guidance_scale: 3.0,
+            num_inference_steps: 28,
+            num_outputs: 1,
+            seed: null
           }
         }
       );
+      output = out;
     } catch (error) {
       if (error.response) {
         let errJson = null;
@@ -299,10 +303,19 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
           errJson = await error.response.json();
         } catch (_) {}
 
+        // Additional requested error logs
+        try {
+          const text = await error.response.text();
+          console.error("🔥 FLUX ERROR RAW TEXT:", text);
+        } catch (_) {}
+        console.error("🔥 FLUX ERROR OBJECT:", error);
+
         console.error("🔥 FLUX API ERROR JSON:", errJson);
         console.error("🔥 FLUX RAW ERROR:", error);
         return res.status(500).json({ error: "Flux failed", details: errJson });
       } else {
+        // Additional requested error log
+        console.error("🔥 FLUX ERROR OBJECT:", error);
         console.error("🔥 FLUX UNKNOWN ERROR:", error);
         return res.status(500).json({ error: error.message });
       }
