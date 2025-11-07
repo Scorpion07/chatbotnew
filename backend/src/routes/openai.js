@@ -31,7 +31,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ---------------------- VERTEX IMAGE GENERATION ----------------------
 const VERTEX_LOCATION = "us-central1";
-const KEY_PATH = path.resolve(__dirname, "../../vertex-key.json");
+const KEY_PATH = path.resolve(__dirname, "..","vertex-key.json");
 
 // Load service account JSON
 function loadServiceAccount() {
