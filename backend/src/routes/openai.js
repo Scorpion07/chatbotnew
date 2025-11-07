@@ -280,10 +280,21 @@ router.post("/image", authRequired, premiumRequired, async (req, res) => {
     // Log clear usage of FLUX via Replicate
     console.log('🖼️  Using FLUX via Replicate: model=black-forest-labs/flux-schnell');
 
-    const output = await replicate.run(
-      'black-forest-labs/flux-schnell',
-      { input: { prompt } }
-    );
+    let output;
+    try {
+      output = await replicate.run(
+        'black-forest-labs/flux-schnell',
+        { input: { prompt } }
+      );
+    } catch (error) {
+      try {
+        const err = await error?.response?.json();
+        console.error('FLUX ERROR:', err);
+      } catch (_) {
+        console.error('FLUX RAW ERROR:', error);
+      }
+      return res.status(500).json({ error: 'Flux image generation failed' });
+    }
 
     let url = null;
     if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
