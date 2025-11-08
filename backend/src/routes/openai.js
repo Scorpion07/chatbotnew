@@ -144,6 +144,7 @@ async function vertexPredict({ prompt, aspectRatio = "1:1" }) {
   };
 
   const resp = await fetch(url, {
+    console.log("📡 Vertex response status:", resp.status);
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -153,6 +154,7 @@ async function vertexPredict({ prompt, aspectRatio = "1:1" }) {
   });
 
   const raw = await resp.clone().text();
+  console.log("📡 Vertex response status:", resp.status);
   const json = JSON.parse(raw);
 
   if (!resp.ok) {
