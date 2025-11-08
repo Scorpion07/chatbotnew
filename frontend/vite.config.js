@@ -1,20 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { terser } from "rollup-plugin-terser";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    terser({
-      format: { comments: false },
-      compress: { defaults: true }
-    })
-  ],
+  plugins: [react()],
 
   build: {
-    minify: "terser",         // ✅ prevents "rendering chunks" freeze
+    minify: "terser",        // ✅ fixes rendering-chunks freeze
     target: "esnext",
-    chunkSizeWarningLimit: 2000
+    chunkSizeWarningLimit: 3000,
   },
 
   server: {
