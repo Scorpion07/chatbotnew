@@ -153,8 +153,9 @@ async function vertexPredict({ prompt, aspectRatio = "1:1" }) {
     },
     body: JSON.stringify(body),
   });
+
   console.log("📡 Vertex response status:", resp.status);
-  const raw = await resp.clone().text();
+  const raw = await resp.text();
   console.log("📥 Raw Vertex response text:", raw);
   const json = JSON.parse(raw);
 
