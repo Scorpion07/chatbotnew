@@ -10,25 +10,7 @@ import rehypeHighlight from 'rehype-highlight';
 import remarkEmoji from 'remark-emoji';
 import 'katex/dist/katex.min.css';
 
-export default function Chat({ setView }) {
-  // Theme: persisted dark mode toggle
-  const prefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const [isDark, setIsDark] = useState(() => {
-    try {
-      const stored = localStorage.getItem('theme');
-      if (stored === 'dark') return true;
-      if (stored === 'light') return false;
-    } catch {}
-    return !!prefersDark;
-  });
-
-  useEffect(() => {
-    try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch {}
-    // Toggle dark class on html element
-    if (typeof document !== 'undefined') {
-      document.documentElement.classList.toggle('dark', isDark);
-    }
-  }, [isDark]);
+export default function Chat({ setView, isDark, toggleDark }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -686,7 +668,7 @@ export default function Chat({ setView }) {
               <button
                 type='button'
                 aria-label='Toggle dark mode'
-                onClick={() => setIsDark(d => !d)}
+                onClick={toggleDark}
                 className='p-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-500 transition-colors'
                 title={isDark ? 'Switch to light' : 'Switch to dark'}
               >

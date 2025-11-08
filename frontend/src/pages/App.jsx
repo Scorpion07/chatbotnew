@@ -18,6 +18,25 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [bots, setBots] = useState([]);
   const [showBotsMenu, setShowBotsMenu] = useState(false);
+  // Global theme state (centralized)
+  const prefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const [isDark, setIsDark] = useState(() => {
+    try {
+      const stored = localStorage.getItem('theme');
+      if (stored === 'dark') return true;
+      if (stored === 'light') return false;
+    } catch {}
+    return !!prefersDark;
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch {}
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', isDark);
+    }
+  }, [isDark]);
+
+  const toggleDark = () => setIsDark(d => !d);
 
   const loadUser = async () => {
     const token = localStorage.getItem('token');
@@ -241,7 +260,7 @@ export default function App() {
       </header>
       {view === 'home' && <Home setView={setView} />}
       {view === 'pricing' && <Pricing setView={setView} />}
-      {view === 'chat' && <Chat setView={setView} />}
+      {view === 'chat' && <Chat setView={setView} isDark={isDark} toggleDark={toggleDark} />}
       {view === 'settings' && <Settings user={user} onLogout={handleLogout} onUpgrade={() => setView('payment')} />}
       {view === 'payment' && <Payment onComplete={() => { loadUser(); setView('chat'); }} />}
       {view === 'login' && <Login onLogin={() => { loadUser(); setView('chat'); }} setView={setView} />}
