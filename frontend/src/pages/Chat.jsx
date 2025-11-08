@@ -253,33 +253,43 @@ export default function Chat({ setView }) {
 
         // ✅ If backend returned polite error object
         if (data && data.politeError) {
-          response = {
-            role: 'assistant',
-            content: data.message || "The system could not generate this image safely.",
-            model: modelLabel,
-            type: 'text'
-          };
-        }
+            response = {
+              role: 'assistant',
+              content: data.message || "The system could not generate this image safely.",
+              model: modelLabel,
+              type: 'text'
+            };
+          }
 
-        // ✅ If backend returned a valid base64 image
-        else if (typeof data === 'string' && data.startsWith('data:image')) {
-          response = {
-            role: 'assistant',
-            content: data, // this is the base64 image URL
-            model: modelLabel,
-            type: 'image'
-          };
-        }
+          // ✅ Valid base64 image (Vertex/OpenAI)
+          else if (typeof data === 'string' && data.startsWith('data:image')) {
+            response = {
+              role: 'assistant',
+              content: data,
+              model: modelLabel,
+              type: 'image'
+            };
+          }
 
-        // ✅ Anything else → generic failure message
-        else {
-          response = {
-            role: 'assistant',
-            content: "Image generation failed. Please try a different prompt.",
-            model: modelLabel,
-            type: 'text'
-          };
-        }
+          // ✅ API returned a URL instead (fallback)
+          else if (res.data.url) {
+            response = {
+              role: 'assistant',
+              content: `![Generated Image](${res.data.url})`,
+              model: modelLabel,
+              type: 'image'
+            };
+          }
+
+          // ✅ Catch-all
+          else {
+            response = {
+              role: 'assistant',
+              content: "Image generation failed. Please try a different prompt.",
+              model: modelLabel,
+              type: 'text'
+            };
+          }
       } else if (botType === 'search') {
         // For now, keep demo search response
         response = {
