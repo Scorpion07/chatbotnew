@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
 
   build: {
-    minify: "terser",        // ✅ fixes rendering-chunks freeze
+    minify: false,        // ✅ fixes rendering-chunks freeze
     target: "esnext",
     chunkSizeWarningLimit: 3000,
   },
