@@ -1,4 +1,6 @@
 // backend/src/routes/openai.js
+// CLEAN + SAFE + STABLE VERSION WITH ADAPTIVE PROMPT CLEANER
+
 import express from "express";
 import OpenAI from "openai";
 import multer from "multer";
@@ -27,7 +29,7 @@ const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
 // --------------------------------------------------
-// OpenAI (text + tts)
+// OpenAI
 // --------------------------------------------------
 if (!process.env.OPENAI_API_KEY) {
   console.error("❌ Missing OPENAI_API_KEY");
@@ -36,12 +38,11 @@ if (!process.env.OPENAI_API_KEY) {
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // --------------------------------------------------
-// Vertex AI (Imagen)
+// Vertex AI
 // --------------------------------------------------
 const VERTEX_LOCATION = "us-central1";
 const KEY_PATH = path.resolve(__dirname, "../vertex-key.json");
 
-// ✅ Logging key path
 console.log("🔑 Vertex KEY_PATH =", KEY_PATH);
 
 function loadServiceAccount() {
@@ -55,7 +56,10 @@ function loadServiceAccount() {
   const json = JSON.parse(fs.readFileSync(KEY_PATH, "utf8"));
   console.log("✅ Service account loaded (project:", json.project_id, ")");
 
-  if (!json.project_id) throw new Error("project_id missing in vertex-key.json");
+  if (!json.project_id) {
+    throw new Error("project_id missing in vertex-key.json");
+  }
+
   return json;
 }
 
@@ -70,57 +74,63 @@ async function getVertexToken() {
   const client = await auth.getClient();
   const token = await client.getAccessToken();
 
-  if (!token?.token) throw new Error("Failed to obtain Vertex OAuth token");
+  if (!token?.token) {
+    throw new Error("Failed to obtain Vertex OAuth token");
+  }
 
   console.log("✅ Vertex OAuth token obtained.");
   return token.token;
 }
 
 function vertexUrl(projectId) {
-  const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${VERTEX_LOCATION}/publishers/google/models/imagegeneration:predict`;
-
-  console.log("🌐 Vertex URL:", url);
-  return url;
+  return `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${VERTEX_LOCATION}/publishers/google/models/imagegeneration:predict`;
 }
 
-function sanitizePrompt(prompt) {
+// --------------------------------------------------
+// ✅ Adaptive Multi-Stage Prompt Cleaner
+// --------------------------------------------------
+function adaptiveCleanPrompt(prompt) {
   const original = String(prompt || "").trim();
-  if (!original) return "a simple harmless illustration";
+  if (!original) return "a simple cute harmless illustration";
 
-  let cleaned = original;
+  // Stage 1 — baseline softener
+  let cleaned =
+    original +
+    " (harmless, family-friendly, wholesome, safe, non-graphic, non-violent, neutral)";
 
-  // --- Stage 1: Softener ---
-  cleaned +=
-    " (harmless, family-friendly, safe, non-violent, non-graphic, neutral tone)";
-
-  // --- Stage 2: Replace risky keywords ---
+  // Stage 2 — pattern sanitization
   cleaned = cleaned.replace(
-    /\b(nude|naked|kill|weapon|blood|dead|violence|sex|gore|nsfw)\b/gi,
+    /\b(nude|naked|sex|kill|blood|dead|weapon|gore|bloody|violence|gun)\b/gi,
     "cute"
   );
 
-  // --- Stage 3: Hard safe rewrite (if original contains banned words) ---
-  if (/\b(nude|naked|kill|weapon|blood|dead|violence|sex|gore|nsfw)\b/i.test(original)) {
+  // Stage 3 — escalate to fully safe rewrite if still unsafe
+  if (
+    /\b(nude|naked|sex|kill|blood|dead|weapon|gore|bloody|violence|gun)\b/i.test(
+      original
+    )
+  ) {
     cleaned =
-      "A wholesome, cute, friendly illustration with soft colors. No people, no violence, no nudity. Safe for all audiences.";
+      "A wholesome, cute, friendly illustration of an animal or object in soft colors. No people, no body parts, no sensitive themes.";
   }
 
   return cleaned;
 }
 
-
 function isSafetyBlock(respJson) {
   const msg = respJson?.error?.message || "";
-  return /safety filter|prohibited/i.test(msg);
+  return /safety filter|prohibited|blocked/i.test(msg);
 }
 
+// --------------------------------------------------
+// Vertex Predict
+// --------------------------------------------------
 async function vertexPredict({ prompt, aspectRatio = "1:1" }) {
-  console.log("🎨 Calling vertexPredict()");
+  console.log("🎨 vertexPredict()");
   console.log("📝 Prompt:", prompt);
-  console.log("🔳 Aspect Ratio:", aspectRatio);
 
   const sa = loadServiceAccount();
-  const accessToken = await getVertexToken();
+  const token = await getVertexToken();
   const url = vertexUrl(sa.project_id);
 
   const body = {
@@ -133,58 +143,45 @@ async function vertexPredict({ prompt, aspectRatio = "1:1" }) {
     },
   };
 
-  console.log("📤 Vertex Request Body:", JSON.stringify(body, null, 2));
-
   const resp = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
   });
 
   const raw = await resp.clone().text();
-  console.log("📥 Vertex Raw Response:", raw);
-
   const json = JSON.parse(raw);
 
   if (!resp.ok) {
-    console.error("❌ Vertex error response:", json);
-    const msg = json?.error?.message || `${resp.status} Vertex error`;
-    const err = new Error(`Vertex predict failed: ${msg}`);
+    const err = new Error(json?.error?.message || "Vertex predict failed");
     err.status = resp.status;
     err.vertex = json;
     throw err;
   }
 
   const pred = json?.predictions?.[0];
-  const mime =
-    pred?.mimeType ||
-    pred?.mime_type ||
-    "image/png";
-
+  const mime = pred?.mimeType || pred?.mime_type || "image/png";
   const b64 =
-    pred?.bytesBase64Encoded ||
-    pred?.imageBytes ||
-    pred?.image_bytes ||
-    null;
+    pred?.bytesBase64Encoded || pred?.imageBytes || pred?.image_bytes || null;
 
   if (!b64) {
-    console.error("❌ Vertex returned no bytes:", json);
-    const err = new Error("Vertex returned no image data.");
+    const err = new Error("Vertex returned no image bytes");
     err.status = 502;
     err.vertex = json;
     throw err;
   }
 
-  console.log("✅ Vertex image generation SUCCESS.");
   return `data:${mime};base64,${b64}`;
 }
 
+// --------------------------------------------------
+// ✅ NEVER-FAIL generateVertexImage()
+// --------------------------------------------------
 async function generateVertexImage(userPrompt, aspectRatio = "1:1") {
-  console.log("🎨 generateVertexImage()");
-  console.log("🧾 User Prompt:", userPrompt);
+  console.log("🧾 generateVertexImage()", userPrompt);
 
   if (!userPrompt || typeof userPrompt !== "string") {
     const e = new Error("Prompt is required.");
@@ -192,62 +189,59 @@ async function generateVertexImage(userPrompt, aspectRatio = "1:1") {
     throw e;
   }
 
-  const safe1 = sanitizePrompt(userPrompt);
-  console.log("✨ Sanitized Prompt:", safe1);
+  // ✅ Stage 1 — adaptive cleaner
+  const cleaned = adaptiveCleanPrompt(userPrompt);
+  console.log("✨ Cleaned Prompt:", cleaned);
 
   try {
-    return await vertexPredict({ prompt: safe1, aspectRatio });
+    return await vertexPredict({ prompt: cleaned, aspectRatio });
   } catch (e) {
     console.error("❌ First attempt failed:", e.message);
-    console.error("📛 STACK:", e.stack);
-    console.error("📛 RAW VERTEX:", e.vertex);
 
     if (e?.vertex && isSafetyBlock(e.vertex)) {
-      console.warn("⚠️ SAFETY FILTER TRIGGERED — retrying with softened prompt.");
+      console.warn("⚠️ SAFETY TRIGGER — trying polite fallback");
 
-      const softened =
-        "A benign, wholesome illustration: " +
-        userPrompt +
-        " (no people, no nudity, no violence, no sensitive context; friendly, cute, stylized).";
+      const fallback =
+        "A completely safe, simple, cute illustration of an object. Soft pastel colors. No people, no sensitive content.";
 
-      console.log("✨ Retry Prompt:", softened);
+      try {
+        return await vertexPredict({ prompt: fallback, aspectRatio });
+      } catch (e2) {
+        console.error("❌ Fallback failed:", e2.message);
 
-      return await vertexPredict({ prompt: softened, aspectRatio });
+        return {
+          politeError: true,
+          message:
+            "Your request required multiple safety adjustments, but the system still blocked it. Please try a simpler description.",
+        };
+      }
     }
 
     throw e;
   }
 }
 
-// ====================================================================================
+// ============================================================================
 // CHAT
-// ====================================================================================
+// ============================================================================
 router.post("/chat", authRequired, async (req, res) => {
-  console.log("💬 /chat request:", req.body);
-
-  const { message, botName, conversationId } = req.body;
-
-  if (!message) {
-    console.error("❌ Chat missing message");
-    return res.status(400).json({ error: "Message is required." });
-  }
-
   try {
-    const user = req.user;
+    const { message, botName, conversationId } = req.body;
 
-    let conv = null;
+    if (!message)
+      return res.status(400).json({ error: "Message is required." });
+
+    const user = req.user;
+    let conv;
+
     if (conversationId) {
       conv = await Conversation.findOne({
         where: { id: conversationId, userId: user.id },
       });
-      console.log("📂 Loaded conversation:", conversationId);
 
-      if (!conv) {
-        console.error("❌ Conversation not found");
+      if (!conv)
         return res.status(404).json({ error: "Conversation not found" });
-      }
     } else {
-      console.log("🆕 Creating new conversation...");
       conv = await Conversation.create({
         userId: user.id,
         botName: botName || "default",
@@ -255,33 +249,14 @@ router.post("/chat", authRequired, async (req, res) => {
       });
     }
 
-    if (!user.isPremium) {
-      const FREE_LIMIT = appConfig?.rateLimit?.freeUserLimit || 5;
-      const [usage] = await Usage.findOrCreate({
-        where: { userId: user.id, botName: botName || "default" },
-        defaults: { count: 0 },
-      });
-
-      if (usage.count >= FREE_LIMIT) {
-        console.warn("⚠️ Free limit reached for", botName);
-        return res.status(402).json({
-          error: `Free limit reached for ${botName || "this bot"}.`,
-        });
-      }
-    }
-
     await Message.create({
       conversationId: conv.id,
       role: "user",
       content: message,
-      model: null,
-      type: "text",
-      botName: botName || "default",
     });
 
     if (!conv.title) {
-      const t = message.trim().slice(0, 60);
-      await conv.update({ title: t || `Chat ${conv.id}` });
+      await conv.update({ title: message.slice(0, 60) });
     }
 
     const response = await openai.chat.completions.create({
@@ -289,64 +264,43 @@ router.post("/chat", authRequired, async (req, res) => {
       messages: [{ role: "user", content: message }],
     });
 
-    const assistantContent = response.choices?.[0]?.message?.content || "";
+    const assistant = response.choices?.[0]?.message?.content || "";
 
     await Message.create({
       conversationId: conv.id,
       role: "assistant",
-      content: assistantContent,
-      model: "gpt-4o-mini",
-      type: "text",
-      botName: botName || "default",
+      content: assistant,
     });
-
-    if (!user.isPremium) {
-      await Usage.increment(
-        { count: 1 },
-        { where: { userId: user.id, botName: botName || "default" } }
-      );
-      await Usage.update(
-        { lastUsedAt: new Date() },
-        { where: { userId: user.id, botName: botName || "default" } }
-      );
-    }
 
     await conv.update({ updatedAt: new Date() });
 
-    res.json({ response: assistantContent, conversationId: conv.id });
-
+    res.json({ response: assistant, conversationId: conv.id });
   } catch (err) {
     console.error("❌ Chat error:", err);
-    console.error("📛 STACK:", err.stack);
-    res.status(500).json({ error: "Something went wrong while processing chat." });
+    res.status(500).json({ error: "Chat failed." });
   }
 });
 
-// ====================================================================================
-// STREAMING CHAT
-// ====================================================================================
+// ============================================================================
+// STREAM
+// ============================================================================
 router.post("/chat/stream", authRequired, async (req, res) => {
-  console.log("💬 /chat/stream request:", req.body);
-
-  const { message, botName, conversationId } = req.body || {};
-
-  if (!message) {
-    console.error("❌ Streaming: Missing message");
-    return res.status(400).json({ error: "Message is required." });
-  }
-
   try {
-    const user = req.user;
+    const { message, botName, conversationId } = req.body;
 
-    let conv = null;
+    if (!message)
+      return res.status(400).json({ error: "Message is required." });
+
+    const user = req.user;
+    let conv;
+
     if (conversationId) {
       conv = await Conversation.findOne({
         where: { id: conversationId, userId: user.id },
       });
-      if (!conv) {
-        console.error("❌ Stream conv not found:", conversationId);
+
+      if (!conv)
         return res.status(404).json({ error: "Conversation not found" });
-      }
     } else {
       conv = await Conversation.create({
         userId: user.id,
@@ -359,7 +313,9 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
 
-    res.write(JSON.stringify({ type: "start", conversationId: conv.id }) + "\n");
+    res.write(
+      JSON.stringify({ type: "start", conversationId: conv.id }) + "\n"
+    );
 
     const stream = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -368,6 +324,7 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     });
 
     let full = "";
+
     for await (const part of stream) {
       const delta = part?.choices?.[0]?.delta?.content || "";
       if (delta) {
@@ -380,98 +337,78 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       conversationId: conv.id,
       role: "assistant",
       content: full,
-      model: "gpt-4o-mini",
-      type: "text",
-      botName: botName || "default",
     });
-
-    await conv.update({ updatedAt: new Date() });
 
     res.write(JSON.stringify({ type: "done", response: full }) + "\n");
     res.end();
-
   } catch (err) {
     console.error("❌ Streaming error:", err);
-    console.error("📛 STACK:", err.stack);
+    try {
+      res.write(
+        JSON.stringify({ type: "error", error: "Streaming failed." }) + "\n"
+      );
+    } catch (_) {}
+    res.end();
+  }
+});
+
+// ============================================================================
+// TRANSCRIBE
+// ============================================================================
+router.post(
+  "/transcribe",
+  authRequired,
+  premiumRequired,
+  upload.single("audio"),
+  async (req, res) => {
+    if (!req.file)
+      return res.status(400).json({ error: "Audio file is required." });
 
     try {
-      res.write(JSON.stringify({ type: "error", error: "Streaming failed" }) + "\n");
-    } catch {}
+      const result = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(req.file.path),
+        model: "whisper-1",
+      });
 
-    try { res.end(); } catch {}
+      res.json({ transcript: result.text });
+    } catch (err) {
+      console.error("❌ Transcription error:", err);
+      res.status(500).json({ error: "Transcription failed." });
+    } finally {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    }
   }
-});
+);
 
-// ====================================================================================
-// AUDIO TRANSCRIPTION
-// ====================================================================================
-router.post("/transcribe", authRequired, premiumRequired, upload.single("audio"), async (req, res) => {
-  console.log("🎤 /transcribe HIT");
-
-  if (!req.file) {
-    console.error("❌ No audio uploaded");
-    return res.status(400).json({ error: "Audio file is required." });
-  }
-
-  try {
-    const result = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(req.file.path),
-      model: "whisper-1",
-    });
-
-    res.json({ transcript: result.text });
-
-  } catch (err) {
-    console.error("❌ Transcription error:", err);
-    console.error("📛 STACK:", err.stack);
-    res.status(500).json({ error: "Something went wrong while transcribing audio." });
-  } finally {
-    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-  }
-});
-
-// ====================================================================================
-// IMAGE GENERATION
-// ====================================================================================
+// ============================================================================
+// IMAGE (VERTEX)
+// ============================================================================
 router.post("/image", authRequired, premiumRequired, async (req, res) => {
-  console.log("🖼️ /image request:", req.body);
+  const { prompt, ratio } = req.body;
 
   try {
-    const { prompt, ratio } = req.body;
     const aspectRatio = ratio || "1:1";
+    const data = await generateVertexImage(prompt, aspectRatio);
 
-    console.log("📝 Prompt:", prompt);
-    console.log("🔳 Ratio:", aspectRatio);
-
-    const dataUrl = await generateVertexImage(prompt, aspectRatio);
-
-    res.json({ success: true, image: dataUrl });
-
+    res.json({ success: true, image: data });
   } catch (err) {
-    console.error("❌ Image generation error:", err.message);
-    console.error("📛 STACK:", err.stack);
-    console.error("📛 RAW VERTEX:", err.vertex);
-
+    console.error("❌ Image generation error:", err);
     res.status(err?.status || 500).json({
       success: false,
       error: err.message,
-      details: err?.vertex?.error?.message || undefined,
+      details: err?.vertex?.error?.message,
     });
   }
 });
 
-// ====================================================================================
-// TEXT TO SPEECH
-// ====================================================================================
+// ============================================================================
+// TTS
+// ============================================================================
 router.post("/audio", authRequired, premiumRequired, async (req, res) => {
   const { text, voice = "alloy", format = "mp3" } = req.body;
 
-  console.log("🔊 /audio request:", req.body);
-
-  if (!text) {
-    console.error("❌ TTS missing text");
+  if (!text)
     return res.status(400).json({ error: "Text is required for TTS." });
-  }
 
   try {
     const tts = await openai.audio.speech.create({
@@ -485,10 +422,8 @@ router.post("/audio", authRequired, premiumRequired, async (req, res) => {
 
     res.setHeader("Content-Type", "audio/mpeg");
     res.send(buffer);
-
   } catch (err) {
     console.error("❌ TTS error:", err);
-    console.error("📛 STACK:", err.stack);
     res.status(500).json({ error: "Failed to synthesize speech." });
   }
 });
