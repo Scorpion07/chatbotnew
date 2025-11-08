@@ -82,7 +82,7 @@ export default function Home({ setView }) {
       <section className='bg-white py-20'>
         <div className='max-w-7xl mx-auto px-6'>
           <div className='text-center mb-16'>
-            <h2 className='text-4xl font-bold mb-4'>Powerful Features</h2>
+            <h2 className='text-4xl font-bold mb-4 text-gray-900'>Powerful Features</h2>
             <p className='text-xl text-gray-600'>Everything you need for AI-powered conversations</p>
           </div>
           <div className='grid md:grid-cols-3 gap-8'>
@@ -120,7 +120,7 @@ export default function Home({ setView }) {
             ].map((feature, i) => (
               <div key={i} className='p-6 rounded-2xl border-2 border-gray-100 hover:border-indigo-200 hover:shadow-xl transition-all bg-gradient-to-br from-white to-gray-50'>
                 <div className='text-4xl mb-4'>{feature.icon}</div>
-                <h3 className='text-xl font-bold mb-2'>{feature.title}</h3>
+                <h3 className='text-xl font-bold mb-2 text-gray-900'>{feature.title}</h3>
                 <p className='text-gray-600'>{feature.description}</p>
               </div>
             ))}

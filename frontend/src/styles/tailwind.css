@@ -3,6 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global dark-mode legibility fix:
+   When the document is in dark mode but a section uses a light background (e.g., bg-white),
+   force default text color to gray-900 so content remains readable. Specific text-* classes still win. */
+html.dark .bg-white { color: #111827; }
+html.dark .bg-gray-50 { color: #111827; }
+html.dark .bg-gray-100 { color: #111827; }
+
 /* Provider-specific code theme accents (kept minimal and safe) */
 .provider-openai .hljs {
 	background: #0b1020; /* deep slate */
