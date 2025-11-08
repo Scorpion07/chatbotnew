@@ -1,6 +1,4 @@
 // backend/src/routes/openai.js
-// FULL UPDATED FILE WITH ADAPTIVE MULTI-STAGE PROMPT CLEANER + POLITE FALLBACK
-
 import express from "express";
 import OpenAI from "openai";
 import multer from "multer";
@@ -29,7 +27,7 @@ const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
 // --------------------------------------------------
-// OpenAI
+// OpenAI (text + tts)
 // --------------------------------------------------
 if (!process.env.OPENAI_API_KEY) {
   console.error("❌ Missing OPENAI_API_KEY");
@@ -38,10 +36,12 @@ if (!process.env.OPENAI_API_KEY) {
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // --------------------------------------------------
-// Vertex AI
+// Vertex AI (Imagen)
 // --------------------------------------------------
 const VERTEX_LOCATION = "us-central1";
 const KEY_PATH = path.resolve(__dirname, "../vertex-key.json");
+
+// ✅ Logging key path
 console.log("🔑 Vertex KEY_PATH =", KEY_PATH);
 
 function loadServiceAccount() {
@@ -78,43 +78,42 @@ async function getVertexToken() {
 
 function vertexUrl(projectId) {
   const url = `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${VERTEX_LOCATION}/publishers/google/models/imagegeneration:predict`;
+
   console.log("🌐 Vertex URL:", url);
   return url;
 }
 
-// --------------------------------------------------
-// ✅ Adaptive multi-stage prompt cleaner
-// --------------------------------------------------
-function adaptiveCleanPrompt(prompt) {
+function sanitizePrompt(prompt) {
   const original = String(prompt || "").trim();
   if (!original) return "a simple harmless illustration";
 
-  // Stage 1: Base softening
-  let cleaned = original +
-    " (harmless, family-friendly, safe, non-violent, non-graphic, neutral)";
+  let cleaned = original;
 
-  // Stage 2: Remove banned patterns if any (generic)
-  cleaned = cleaned.replace(/\b(nude|kill|blood|dead|weapon|sex)\b/gi, "cute");
+  // --- Stage 1: Softener ---
+  cleaned +=
+    " (harmless, family-friendly, safe, non-violent, non-graphic, neutral tone)";
 
-  // Stage 3: Hard rewrite if prompt still too risky
-  if (/\b(nude|kill|blood|dead|weapon|sex)\b/i.test(original)) {
-    cleaned = `A wholesome, cute, friendly illustration of an animal or object. Soft colors, safe content.`;
+  // --- Stage 2: Replace risky keywords ---
+  cleaned = cleaned.replace(
+    /\b(nude|naked|kill|weapon|blood|dead|violence|sex|gore|nsfw)\b/gi,
+    "cute"
+  );
+
+  // --- Stage 3: Hard safe rewrite (if original contains banned words) ---
+  if (/\b(nude|naked|kill|weapon|blood|dead|violence|sex|gore|nsfw)\b/i.test(original)) {
+    cleaned =
+      "A wholesome, cute, friendly illustration with soft colors. No people, no violence, no nudity. Safe for all audiences.";
   }
 
   return cleaned;
 }
 
-// --------------------------------------------------
-// Safety block detection
-// --------------------------------------------------
+
 function isSafetyBlock(respJson) {
   const msg = respJson?.error?.message || "";
   return /safety filter|prohibited/i.test(msg);
 }
 
-// --------------------------------------------------
-// Vertex Predict
-// --------------------------------------------------
 async function vertexPredict({ prompt, aspectRatio = "1:1" }) {
   console.log("🎨 Calling vertexPredict()");
   console.log("📝 Prompt:", prompt);
@@ -160,8 +159,16 @@ async function vertexPredict({ prompt, aspectRatio = "1:1" }) {
   }
 
   const pred = json?.predictions?.[0];
-  const mime = pred?.mimeType || pred?.mime_type || "image/png";
-  const b64 = pred?.bytesBase64Encoded || pred?.imageBytes || pred?.image_bytes;
+  const mime =
+    pred?.mimeType ||
+    pred?.mime_type ||
+    "image/png";
+
+  const b64 =
+    pred?.bytesBase64Encoded ||
+    pred?.imageBytes ||
+    pred?.image_bytes ||
+    null;
 
   if (!b64) {
     console.error("❌ Vertex returned no bytes:", json);
@@ -175,9 +182,6 @@ async function vertexPredict({ prompt, aspectRatio = "1:1" }) {
   return `data:${mime};base64,${b64}`;
 }
 
-// --------------------------------------------------
-// ✅ generateVertexImage with adaptive cleaning + polite fallback
-// --------------------------------------------------
 async function generateVertexImage(userPrompt, aspectRatio = "1:1") {
   console.log("🎨 generateVertexImage()");
   console.log("🧾 User Prompt:", userPrompt);
@@ -188,59 +192,62 @@ async function generateVertexImage(userPrompt, aspectRatio = "1:1") {
     throw e;
   }
 
-  // Stage 1: adaptive cleaner
-  const cleaned = adaptiveCleanPrompt(userPrompt);
-  console.log("✨ Cleaned Prompt:", cleaned);
+  const safe1 = sanitizePrompt(userPrompt);
+  console.log("✨ Sanitized Prompt:", safe1);
 
   try {
-    return await vertexPredict({ prompt: cleaned, aspectRatio });
+    return await vertexPredict({ prompt: safe1, aspectRatio });
   } catch (e) {
     console.error("❌ First attempt failed:", e.message);
+    console.error("📛 STACK:", e.stack);
+    console.error("📛 RAW VERTEX:", e.vertex);
 
     if (e?.vertex && isSafetyBlock(e.vertex)) {
-      console.warn("⚠️ SAFETY FILTER — attempting polite fallback");
+      console.warn("⚠️ SAFETY FILTER TRIGGERED — retrying with softened prompt.");
 
-      const fallback =
-        `A completely safe, friendly, simple illustration (soft colors, cute style). ` +
-        `Original request was rewritten for safety.`;
+      const softened =
+        "A benign, wholesome illustration: " +
+        userPrompt +
+        " (no people, no nudity, no violence, no sensitive context; friendly, cute, stylized).";
 
-      console.log("✨ Polite fallback prompt:", fallback);
+      console.log("✨ Retry Prompt:", softened);
 
-      try {
-        return await vertexPredict({ prompt: fallback, aspectRatio });
-      } catch (e2) {
-        console.error("❌ Fallback failed too:", e2.message);
-        return {
-          politeError: true,
-          message:
-            "Your request was adjusted for safety, but the system still blocked it. Please try a simpler description.",
-        };
-      }
+      return await vertexPredict({ prompt: softened, aspectRatio });
     }
 
     throw e;
   }
 }
 
-// ============================================================================
-// CHAT ENDPOINTS (unchanged logic)
-// ============================================================================
-
-// --- Standard Chat ---
+// ====================================================================================
+// CHAT
+// ====================================================================================
 router.post("/chat", authRequired, async (req, res) => {
+  console.log("💬 /chat request:", req.body);
+
+  const { message, botName, conversationId } = req.body;
+
+  if (!message) {
+    console.error("❌ Chat missing message");
+    return res.status(400).json({ error: "Message is required." });
+  }
+
   try {
-    const { message, botName, conversationId } = req.body;
-    if (!message) return res.status(400).json({ error: "Message is required." });
-
     const user = req.user;
-    let conv = null;
 
+    let conv = null;
     if (conversationId) {
       conv = await Conversation.findOne({
         where: { id: conversationId, userId: user.id },
       });
-      if (!conv) return res.status(404).json({ error: "Conversation not found" });
+      console.log("📂 Loaded conversation:", conversationId);
+
+      if (!conv) {
+        console.error("❌ Conversation not found");
+        return res.status(404).json({ error: "Conversation not found" });
+      }
     } else {
+      console.log("🆕 Creating new conversation...");
       conv = await Conversation.create({
         userId: user.id,
         botName: botName || "default",
@@ -248,14 +255,33 @@ router.post("/chat", authRequired, async (req, res) => {
       });
     }
 
+    if (!user.isPremium) {
+      const FREE_LIMIT = appConfig?.rateLimit?.freeUserLimit || 5;
+      const [usage] = await Usage.findOrCreate({
+        where: { userId: user.id, botName: botName || "default" },
+        defaults: { count: 0 },
+      });
+
+      if (usage.count >= FREE_LIMIT) {
+        console.warn("⚠️ Free limit reached for", botName);
+        return res.status(402).json({
+          error: `Free limit reached for ${botName || "this bot"}.`,
+        });
+      }
+    }
+
     await Message.create({
       conversationId: conv.id,
       role: "user",
       content: message,
+      model: null,
+      type: "text",
+      botName: botName || "default",
     });
 
     if (!conv.title) {
-      await conv.update({ title: message.slice(0, 60) });
+      const t = message.trim().slice(0, 60);
+      await conv.update({ title: t || `Chat ${conv.id}` });
     }
 
     const response = await openai.chat.completions.create({
@@ -269,31 +295,58 @@ router.post("/chat", authRequired, async (req, res) => {
       conversationId: conv.id,
       role: "assistant",
       content: assistantContent,
+      model: "gpt-4o-mini",
+      type: "text",
+      botName: botName || "default",
     });
+
+    if (!user.isPremium) {
+      await Usage.increment(
+        { count: 1 },
+        { where: { userId: user.id, botName: botName || "default" } }
+      );
+      await Usage.update(
+        { lastUsedAt: new Date() },
+        { where: { userId: user.id, botName: botName || "default" } }
+      );
+    }
 
     await conv.update({ updatedAt: new Date() });
 
     res.json({ response: assistantContent, conversationId: conv.id });
+
   } catch (err) {
     console.error("❌ Chat error:", err);
-    res.status(500).json({ error: "Chat failed." });
+    console.error("📛 STACK:", err.stack);
+    res.status(500).json({ error: "Something went wrong while processing chat." });
   }
 });
 
-// --- Streaming Chat ---
+// ====================================================================================
+// STREAMING CHAT
+// ====================================================================================
 router.post("/chat/stream", authRequired, async (req, res) => {
+  console.log("💬 /chat/stream request:", req.body);
+
+  const { message, botName, conversationId } = req.body || {};
+
+  if (!message) {
+    console.error("❌ Streaming: Missing message");
+    return res.status(400).json({ error: "Message is required." });
+  }
+
   try {
-    const { message, botName, conversationId } = req.body;
-    if (!message) return res.status(400).json({ error: "Message is required." });
-
     const user = req.user;
-    let conv = null;
 
+    let conv = null;
     if (conversationId) {
       conv = await Conversation.findOne({
         where: { id: conversationId, userId: user.id },
       });
-      if (!conv) return res.status(404).json({ error: "Conversation not found" });
+      if (!conv) {
+        console.error("❌ Stream conv not found:", conversationId);
+        return res.status(404).json({ error: "Conversation not found" });
+      }
     } else {
       conv = await Conversation.create({
         userId: user.id,
@@ -302,7 +355,10 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       });
     }
 
-    res.setHeader("Content-Type", "application/x-ndjson");
+    res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+
     res.write(JSON.stringify({ type: "start", conversationId: conv.id }) + "\n");
 
     const stream = await openai.chat.completions.create({
@@ -324,10 +380,117 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       conversationId: conv.id,
       role: "assistant",
       content: full,
+      model: "gpt-4o-mini",
+      type: "text",
+      botName: botName || "default",
     });
+
+    await conv.update({ updatedAt: new Date() });
 
     res.write(JSON.stringify({ type: "done", response: full }) + "\n");
     res.end();
+
   } catch (err) {
-    console.error("❌ Stream error:", err);
-    try { res.write(JSON.stringify({ type: "error", error: "Streaming failed" }) + "\n"");}
+    console.error("❌ Streaming error:", err);
+    console.error("📛 STACK:", err.stack);
+
+    try {
+      res.write(JSON.stringify({ type: "error", error: "Streaming failed" }) + "\n");
+    } catch {}
+
+    try { res.end(); } catch {}
+  }
+});
+
+// ====================================================================================
+// AUDIO TRANSCRIPTION
+// ====================================================================================
+router.post("/transcribe", authRequired, premiumRequired, upload.single("audio"), async (req, res) => {
+  console.log("🎤 /transcribe HIT");
+
+  if (!req.file) {
+    console.error("❌ No audio uploaded");
+    return res.status(400).json({ error: "Audio file is required." });
+  }
+
+  try {
+    const result = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(req.file.path),
+      model: "whisper-1",
+    });
+
+    res.json({ transcript: result.text });
+
+  } catch (err) {
+    console.error("❌ Transcription error:", err);
+    console.error("📛 STACK:", err.stack);
+    res.status(500).json({ error: "Something went wrong while transcribing audio." });
+  } finally {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+  }
+});
+
+// ====================================================================================
+// IMAGE GENERATION
+// ====================================================================================
+router.post("/image", authRequired, premiumRequired, async (req, res) => {
+  console.log("🖼️ /image request:", req.body);
+
+  try {
+    const { prompt, ratio } = req.body;
+    const aspectRatio = ratio || "1:1";
+
+    console.log("📝 Prompt:", prompt);
+    console.log("🔳 Ratio:", aspectRatio);
+
+    const dataUrl = await generateVertexImage(prompt, aspectRatio);
+
+    res.json({ success: true, image: dataUrl });
+
+  } catch (err) {
+    console.error("❌ Image generation error:", err.message);
+    console.error("📛 STACK:", err.stack);
+    console.error("📛 RAW VERTEX:", err.vertex);
+
+    res.status(err?.status || 500).json({
+      success: false,
+      error: err.message,
+      details: err?.vertex?.error?.message || undefined,
+    });
+  }
+});
+
+// ====================================================================================
+// TEXT TO SPEECH
+// ====================================================================================
+router.post("/audio", authRequired, premiumRequired, async (req, res) => {
+  const { text, voice = "alloy", format = "mp3" } = req.body;
+
+  console.log("🔊 /audio request:", req.body);
+
+  if (!text) {
+    console.error("❌ TTS missing text");
+    return res.status(400).json({ error: "Text is required for TTS." });
+  }
+
+  try {
+    const tts = await openai.audio.speech.create({
+      model: "tts-1",
+      voice,
+      input: text,
+      format,
+    });
+
+    const buffer = Buffer.from(await tts.arrayBuffer());
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.send(buffer);
+
+  } catch (err) {
+    console.error("❌ TTS error:", err);
+    console.error("📛 STACK:", err.stack);
+    res.status(500).json({ error: "Failed to synthesize speech." });
+  }
+});
+
+export default router;
