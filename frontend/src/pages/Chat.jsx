@@ -251,45 +251,47 @@ export default function Chat({ setView }) {
 
         const data = res.data.image;
 
-        // ✅ If backend returned polite error object
+        // ✅ Backend polite safety fallback message
         if (data && data.politeError) {
-            response = {
-              role: 'assistant',
-              content: data.message || "The system could not generate this image safely.",
-              model: modelLabel,
-              type: 'text'
-            };
-          }
+          response = {
+            role: 'assistant',
+            content: data.message || "The system could not generate this image safely.",
+            model: modelLabel,
+            type: 'text'
+          };
+        }
 
-          // ✅ Valid base64 image (Vertex/OpenAI)
-          else if (typeof data === 'string' && data.startsWith('data:image')) {
-            response = {
-              role: 'assistant',
-              content: data,
-              model: modelLabel,
-              type: 'image'
-            };
-          }
+        // ✅ Valid base64 image (Vertex/OpenAI)
+        else if (typeof data === 'string' && data.startsWith('data:image')) {
+          response = {
+            role: 'assistant',
+            content: data,   // already base64
+            model: modelLabel,
+            type: 'image'
+          };
+        }
 
-          // ✅ API returned a URL instead (fallback)
-          else if (res.data.url) {
-            response = {
-              role: 'assistant',
-              content: `![Generated Image](${res.data.url})`,
-              model: modelLabel,
-              type: 'image'
-            };
-          }
+        // ✅ Direct URL fallback from backend
+        else if (res.data.url) {
+          response = {
+            role: 'assistant',
+            content: `![Generated Image](${res.data.url})`,
+            model: modelLabel,
+            type: 'image'
+          };
+        }
 
-          // ✅ Catch-all
-          else {
-            response = {
-              role: 'assistant',
-              content: "Image generation failed. Please try a different prompt.",
-              model: modelLabel,
-              type: 'text'
-            };
-          }
+        // ✅ Catch-all failure
+        else {
+          response = {
+            role: 'assistant',
+            content: "Image generation failed. Please try a different prompt.",
+            model: modelLabel,
+            type: 'text'
+          };
+        }
+      }
+
       } else if (botType === 'search') {
         // For now, keep demo search response
         response = {
