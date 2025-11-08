@@ -61,7 +61,18 @@ export default function App() {
   <header className='bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center'>
           <div className='flex items-center gap-2 cursor-pointer' onClick={() => setView('home')}>
-            <img src={config.app.logo.small} alt={config.app.name} className='w-8 h-8 sm:w-10 sm:h-10' />
+            {config.app.logo?.dark ? (
+              <>
+                <img src={config.app.logo.small} alt={config.app.name} className='w-8 h-8 sm:w-10 sm:h-10 block dark:hidden' />
+                <img src={config.app.logo.dark} alt={config.app.name} className='w-8 h-8 sm:w-10 sm:h-10 hidden dark:block' />
+              </>
+            ) : (
+              <img
+                src={config.app.logo.small}
+                alt={config.app.name}
+                className='w-8 h-8 sm:w-10 sm:h-10 dark:invert dark:brightness-110 dark:contrast-125'
+              />
+            )}
             <h1 className='text-lg sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent'>{config.app.name}</h1>
           </div>
           

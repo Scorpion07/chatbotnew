@@ -36,7 +36,9 @@ export const config = {
     logo: {
       small: "/logo/logoo.jpg",
       large: "/logo/logoo.jpg",
-      favicon: "/logo/logoo.jpg"
+      favicon: "/logo/logoo.jpg",
+      // Optional dark-mode variant. If not provided, UI will auto-adapt using CSS filters.
+      dark: import.meta.env.VITE_APP_LOGO_DARK || ""
     }
   },
 

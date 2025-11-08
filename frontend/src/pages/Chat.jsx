@@ -290,8 +290,6 @@ export default function Chat({ setView }) {
             type: 'text'
           };
         }
-      }
-
       } else if (botType === 'search') {
         // For now, keep demo search response
         response = {
@@ -301,7 +299,7 @@ export default function Chat({ setView }) {
           type: 'search',
           results: []
         };
-  } else if (botType === 'audio') {
+      } else if (botType === 'audio') {
         // Call backend audio endpoint and play audio
         const token = localStorage.getItem('token');
         const audioRes = await fetch(getApiUrl('/api/openai/audio'), {
@@ -407,7 +405,7 @@ export default function Chat({ setView }) {
       if (!isPremium) {
         setQueryCount(prev => ({ ...prev, [selectedModel]: (prev[selectedModel] || 0) + 1 }));
       }
-  } catch (err) {
+    } catch (err) {
       // If server enforced limit, show upgrade modal
       if (err?.response?.status === 402 || err?.response?.status === 403) {
         setShowUpgrade(true);
@@ -950,8 +948,8 @@ export default function Chat({ setView }) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-  <div className='bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4'>
+    {/* Input Area */}
+  <div className='bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 pb-[env(safe-area-inset-bottom)]'>
           <div className='max-w-4xl mx-auto'>
             {/* Image preview (if any) */}
             {selectedImagePreview && (
@@ -965,7 +963,7 @@ export default function Chat({ setView }) {
                 </button>
               </div>
             )}
-            <div className='flex gap-2 sm:gap-3 items-end'>
+            <div className='flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end'>
               <div className='flex-1 relative'>
                 <textarea
                   value={input}
@@ -985,7 +983,7 @@ export default function Chat({ setView }) {
                 </div>
               </div>
               {/* Voice Prompt Button Only */}
-              <div className='flex flex-col gap-2 pb-2'>
+              <div className='flex flex-row sm:flex-col gap-2 pb-2'>
                 {/* Attach image (available for all models) */}
                 <label className='bg-white dark:bg-gray-800 rounded-full p-2 sm:p-3 shadow border-2 border-gray-200 dark:border-gray-700 hover:border-indigo-500 transition-colors cursor-pointer flex items-center justify-center' title='Attach image'>
                   <input type='file' accept='image/*' onChange={handleImageUpload} className='hidden' />
@@ -1025,7 +1023,7 @@ export default function Chat({ setView }) {
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || isTyping}
-                className={`p-3 sm:p-4 rounded-xl font-medium transition-all flex items-center justify-center shadow-lg text-sm sm:text-base ${
+                className={`p-3 sm:p-4 rounded-xl font-medium transition-all flex items-center justify-center shadow-lg text-sm sm:text-base w-full sm:w-auto mt-1 sm:mt-0 ${
                   input.trim() && !isTyping
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-xl transform hover:scale-105'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
