@@ -9,6 +9,8 @@ import path from "path";
 import dotenv from "dotenv";
 import { GoogleAuth } from "google-auth-library";
 import { fileURLToPath } from "url";
+import fetch from "node-fetch";
+
 
 import { User, Usage, Conversation, Message } from "../models/index.js";
 import { appConfig } from "../services/configService.js";
