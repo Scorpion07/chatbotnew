@@ -272,10 +272,10 @@ export default function Chat({ setView }) {
         }
 
         // ✅ Direct URL fallback from backend
-        else if (res.data.url) {
+        else if (res.data.image && typeof res.data.image === "string" && res.data.image.startsWith("data:image")) {
           response = {
             role: 'assistant',
-            content: `![Generated Image](${res.data.url})`,
+            content: res.data.image,
             model: modelLabel,
             type: 'image'
           };
