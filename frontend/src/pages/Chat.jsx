@@ -241,17 +241,45 @@ export default function Chat({ setView }) {
     try {
       let response;
       if (botType === 'image') {
-        // Call backend image endpoint
         const token = localStorage.getItem('token');
-        const res = await axios.post(getApiUrl('/api/openai/image'), { prompt: userMessage.content }, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        response = {
-          role: 'assistant',
-          content: res.data.url ? `![Generated Image](${res.data.url})` : 'Image generation failed.',
-          model: modelLabel,
-          type: 'image'
-        };
+
+        const res = await axios.post(
+          getApiUrl('/api/openai/image'),
+          { prompt: userMessage.content },
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
+
+        const data = res.data.image;
+
+        // ✅ If backend returned polite error object
+        if (data && data.politeError) {
+          response = {
+            role: 'assistant',
+            content: data.message || "The system could not generate this image safely.",
+            model: modelLabel,
+            type: 'text'
+          };
+        }
+
+        // ✅ If backend returned a valid base64 image
+        else if (typeof data === 'string' && data.startsWith('data:image')) {
+          response = {
+            role: 'assistant',
+            content: data, // this is the base64 image URL
+            model: modelLabel,
+            type: 'image'
+          };
+        }
+
+        // ✅ Anything else → generic failure message
+        else {
+          response = {
+            role: 'assistant',
+            content: "Image generation failed. Please try a different prompt.",
+            model: modelLabel,
+            type: 'text'
+          };
+        }
       } else if (botType === 'search') {
         // For now, keep demo search response
         response = {
