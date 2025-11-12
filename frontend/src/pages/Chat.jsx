@@ -702,7 +702,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
                 className='px-4 py-2 rounded-lg font-medium bg-white dark:bg-gray-800 dark:text-white border-2 border-gray-200 dark:border-gray-700 hover:border-indigo-500 focus:border-indigo-600 focus:outline-none transition-all'
-                style={{ colorScheme: 'dark' }}
+                style={{ color: isDark ? 'white' : undefined }}
                 onMouseMove={e => {
                   const rect = e.target.getBoundingClientRect();
                   setDropdownPos({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
@@ -712,6 +712,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
                   <option
                     key={bot.id}
                     value={bot.name}
+                    style={isDark ? { color: 'white', background: '#1f2937' } : {}}
                     onMouseEnter={() => setHoveredBot(bot)}
                     onMouseLeave={() => setHoveredBot(null)}
                   >
