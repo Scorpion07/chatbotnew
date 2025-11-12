@@ -579,10 +579,18 @@ export default function Chat({ setView, isDark, toggleDark }) {
   };
 
   return (
-    <div className='flex h-[calc(100vh-73px)] bg-gray-50 dark:bg-gray-900'>
+    <div className='flex flex-col md:flex-row h-screen md:h-[calc(100vh-73px)] bg-gray-50 dark:bg-gray-900'>
       {showUpgrade && <UpgradeModal />}
       {/* Sidebar */}
-      <div className={`${showSidebar ? 'w-64 md:w-64' : 'w-0'} ${showSidebar ? 'fixed md:relative' : ''} ${showSidebar ? 'inset-y-0 left-0 z-30 md:z-auto' : ''} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 overflow-hidden flex flex-col`}>
+      <div className={`
+        ${showSidebar ? 'w-64 md:w-64' : 'w-0'}
+        ${showSidebar ? 'fixed md:relative' : ''}
+        ${showSidebar ? 'inset-y-0 left-0 z-30 md:z-auto' : ''}
+        bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 overflow-hidden flex flex-col
+        max-h-[60vh] md:max-h-none
+        absolute md:static top-0 left-0
+        ${showSidebar ? 'block' : 'hidden md:block'}
+      `}>
         <div className='p-4 border-b border-gray-200 dark:border-gray-800'>
           <button onClick={newConversation} className='w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base'>
             <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -591,7 +599,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
             New Chat
           </button>
         </div>
-        <div className='flex-1 overflow-y-auto p-3'>
+        <div className='flex-1 overflow-y-auto p-3 custom-scrollbar'>
           <div className='text-xs font-semibold text-gray-900 dark:text-black mb-2 px-2'>Recent Conversations</div>
           {conversations.map((conv) => (
             <div
@@ -654,16 +662,25 @@ export default function Chat({ setView, isDark, toggleDark }) {
       </div>
 
   {/* Main Chat Area */}
-  <div className='flex-1 flex flex-col relative'>
+  <div className='flex-1 flex flex-col relative min-h-0'>
         {/* Mobile Sidebar Overlay */}
         {showSidebar && (
           <div className='md:hidden fixed inset-0 bg-black bg-opacity-50 z-20' onClick={() => setShowSidebar(false)}></div>
         )}
+        {/* Mobile sidebar toggle button */}
+        <button
+          className='md:hidden fixed top-4 left-4 z-40 p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg'
+          onClick={() => setShowSidebar(!showSidebar)}
+        >
+          <svg className='w-6 h-6 text-gray-700 dark:text-gray-200' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 6h16M4 12h16M4 18h16' />
+          </svg>
+        </button>
 
         {/* Top Bar */}
-  <div className='bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4'>
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center gap-4'>
+  <div className='bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-2 sm:px-6 py-3 sm:py-4'>
+          <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0'>
+            <div className='flex items-center gap-2 sm:gap-4'>
               <button onClick={() => setShowSidebar(!showSidebar)} className='p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors'>
                 <svg className='w-5 h-5 text-gray-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                   <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 6h16M4 12h16M4 18h16' />
@@ -792,7 +809,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
         )}
 
         {/* Messages */}
-        <div className='flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6'>
+        <div className='flex-1 overflow-y-auto px-2 sm:px-6 py-2 sm:py-6 space-y-4 sm:space-y-6 custom-scrollbar'>
           {messages.map((message, index) => (
             <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'}`}>
               {message.role === 'assistant' && (
@@ -949,8 +966,8 @@ export default function Chat({ setView, isDark, toggleDark }) {
         </div>
 
     {/* Input Area */}
-  <div className='bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 pb-[env(safe-area-inset-bottom)]'>
-          <div className='max-w-4xl mx-auto'>
+  <div className='bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-2 sm:px-6 py-3 sm:py-4 pb-[env(safe-area-inset-bottom)]'>
+          <div className='max-w-2xl sm:max-w-4xl mx-auto'>
             {/* Image preview (if any) */}
             {selectedImagePreview && (
               <div className='mb-2 flex items-center gap-3'>
@@ -963,7 +980,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
                 </button>
               </div>
             )}
-            <div className='flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end'>
+            <div className='flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end w-full'>
               <div className='flex-1 relative'>
                 <textarea
                   value={input}
