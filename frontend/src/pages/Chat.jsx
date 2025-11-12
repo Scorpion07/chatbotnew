@@ -579,19 +579,10 @@ export default function Chat({ setView, isDark, toggleDark }) {
   };
 
   return (
-    <div className='flex flex-col md:flex-row h-[calc(100vh-73px)] bg-gray-50 dark:bg-gray-900'>
+    <div className='flex h-[calc(100vh-73px)] bg-gray-50 dark:bg-gray-900'>
       {showUpgrade && <UpgradeModal />}
       {/* Sidebar */}
-      <div className={`
-        ${showSidebar ? 'w-64 md:w-64' : 'w-0'}
-        ${showSidebar ? 'fixed md:relative' : ''}
-        ${showSidebar ? 'inset-y-0 left-0 z-30 md:z-auto' : ''}
-        bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 overflow-hidden flex flex-col
-        max-w-full
-        md:static
-        md:h-auto
-        h-full
-      `}>
+      <div className={`${showSidebar ? 'w-64 md:w-64' : 'w-0'} ${showSidebar ? 'fixed md:relative' : ''} ${showSidebar ? 'inset-y-0 left-0 z-30 md:z-auto' : ''} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 overflow-hidden flex flex-col`}>
         <div className='p-4 border-b border-gray-200 dark:border-gray-800'>
           <button onClick={newConversation} className='w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base'>
             <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -600,7 +591,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
             New Chat
           </button>
         </div>
-        <div className='flex-1 overflow-y-auto p-2 md:p-3'>
+        <div className='flex-1 overflow-y-auto p-3'>
           <div className='text-xs font-semibold text-gray-900 dark:text-black mb-2 px-2'>Recent Conversations</div>
           {conversations.map((conv) => (
             <div
@@ -663,7 +654,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
       </div>
 
   {/* Main Chat Area */}
-  <div className='flex-1 flex flex-col relative min-w-0 max-w-full'>
+  <div className='flex-1 flex flex-col relative'>
         {/* Mobile Sidebar Overlay */}
         {showSidebar && (
           <div className='md:hidden fixed inset-0 bg-black bg-opacity-50 z-20' onClick={() => setShowSidebar(false)}></div>
@@ -799,15 +790,15 @@ export default function Chat({ setView, isDark, toggleDark }) {
         )}
 
         {/* Messages */}
-        <div className='flex-1 overflow-y-auto px-2 sm:px-4 py-2 sm:py-4 space-y-3 sm:space-y-6'>
+        <div className='flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6'>
           {messages.map((message, index) => (
-            <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'} items-end`}> 
+            <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'}`}>
               {message.role === 'assistant' && (
                 <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br ${selectedModelData?.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
                   <span className='text-lg sm:text-xl'>{selectedModelData?.icon}</span>
                 </div>
               )}
-              <div className={`w-full max-w-[95vw] sm:max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
+              <div className={`w-full max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
                 <div className={`px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base ${
                   message.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none'
@@ -956,8 +947,8 @@ export default function Chat({ setView, isDark, toggleDark }) {
         </div>
 
     {/* Input Area */}
-  <div className='bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-2 sm:px-6 py-3 sm:py-4 pb-[env(safe-area-inset-bottom)]'>
-          <div className='max-w-full sm:max-w-4xl mx-auto'>
+  <div className='bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 pb-[env(safe-area-inset-bottom)]'>
+          <div className='max-w-4xl mx-auto'>
             {/* Image preview (if any) */}
             {selectedImagePreview && (
               <div className='mb-2 flex items-center gap-3'>
@@ -971,7 +962,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
               </div>
             )}
             <div className='flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end'>
-              <div className='flex-1 relative min-w-0'>
+              <div className='flex-1 relative'>
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
