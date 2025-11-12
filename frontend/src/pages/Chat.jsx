@@ -579,10 +579,19 @@ export default function Chat({ setView, isDark, toggleDark }) {
   };
 
   return (
-    <div className='flex h-[calc(100vh-73px)] bg-gray-50 dark:bg-gray-900'>
+    <div className='flex flex-col md:flex-row h-[calc(100vh-73px)] bg-gray-50 dark:bg-gray-900'>
       {showUpgrade && <UpgradeModal />}
       {/* Sidebar */}
-      <div className={`${showSidebar ? 'w-64 md:w-64' : 'w-0'} ${showSidebar ? 'fixed md:relative' : ''} ${showSidebar ? 'inset-y-0 left-0 z-30 md:z-auto' : ''} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 overflow-hidden flex flex-col`}>
+      <div className={`
+        ${showSidebar ? 'w-64 md:w-64' : 'w-0'}
+        ${showSidebar ? 'fixed md:relative' : ''}
+        ${showSidebar ? 'inset-y-0 left-0 z-30 md:z-auto' : ''}
+        bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 overflow-hidden flex flex-col
+        max-w-full
+        md:static
+        md:h-auto
+        h-full
+      `}>
         <div className='p-4 border-b border-gray-200 dark:border-gray-800'>
           <button onClick={newConversation} className='w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base'>
             <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
@@ -591,8 +600,8 @@ export default function Chat({ setView, isDark, toggleDark }) {
             New Chat
           </button>
         </div>
-        <div className='flex-1 overflow-y-auto p-3'>
-          <div className='text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 px-2'>Recent Conversations</div>
+        <div className='flex-1 overflow-y-auto p-2 md:p-3'>
+          <div className='text-xs font-semibold text-gray-900 dark:text-black mb-2 px-2'>Recent Conversations</div>
           {conversations.map((conv) => (
             <div
               key={conv.id}
@@ -608,7 +617,23 @@ export default function Chat({ setView, isDark, toggleDark }) {
                   <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' />
                 </svg>
                 <div className='flex-1 min-w-0'>
-                  <div className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'>{conv.title}</div>
+                  <input
+                    className={`text-sm font-medium bg-transparent border-none outline-none w-full truncate text-gray-900 dark:text-black ${activeConversation === conv.id ? '' : 'pointer-events-none'}`}
+                    value={conv.title}
+                    onChange={e => {
+                      const newTitle = e.target.value;
+                      setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, title: newTitle } : c));
+                      // Optionally persist to backend
+                      const token = localStorage.getItem('token');
+                      if (token) {
+                        axios.patch(getApiUrl(`/api/conversations/${conv.id}`), { title: newTitle }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+                      }
+                    }}
+                    onClick={e => e.stopPropagation()}
+                    onBlur={e => e.target.blur()}
+                    readOnly={activeConversation !== conv.id}
+                    title={conv.title}
+                  />
                   <div className='text-xs text-gray-500 dark:text-gray-400'>{conv.date}</div>
                 </div>
                 <button
@@ -638,7 +663,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
       </div>
 
   {/* Main Chat Area */}
-  <div className='flex-1 flex flex-col relative'>
+  <div className='flex-1 flex flex-col relative min-w-0 max-w-full'>
         {/* Mobile Sidebar Overlay */}
         {showSidebar && (
           <div className='md:hidden fixed inset-0 bg-black bg-opacity-50 z-20' onClick={() => setShowSidebar(false)}></div>
@@ -774,15 +799,15 @@ export default function Chat({ setView, isDark, toggleDark }) {
         )}
 
         {/* Messages */}
-        <div className='flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6'>
+        <div className='flex-1 overflow-y-auto px-2 sm:px-4 py-2 sm:py-4 space-y-3 sm:space-y-6'>
           {messages.map((message, index) => (
-            <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'}`}>
+            <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'} items-end`}> 
               {message.role === 'assistant' && (
                 <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br ${selectedModelData?.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
                   <span className='text-lg sm:text-xl'>{selectedModelData?.icon}</span>
                 </div>
               )}
-              <div className={`w-full max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
+              <div className={`w-full max-w-[95vw] sm:max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
                 <div className={`px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base ${
                   message.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none'
@@ -822,7 +847,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
                       {/* Provider/model chip header to mimic native UIs */}
                       {message.role === 'assistant' && (
                         <div className='mb-2 -mt-1 flex items-center gap-2 text-xs'>
-                          <span className={`px-2 py-0.5 rounded-full ${PT.chip}`}>{message.model || modelLabel}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${PT.chip} text-white`}>{message.model || modelLabel}</span>
                         </div>
                       )}
                       <div className='prose prose-slate dark:prose-invert max-w-none'>
@@ -931,8 +956,8 @@ export default function Chat({ setView, isDark, toggleDark }) {
         </div>
 
     {/* Input Area */}
-  <div className='bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 pb-[env(safe-area-inset-bottom)]'>
-          <div className='max-w-4xl mx-auto'>
+  <div className='bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-2 sm:px-6 py-3 sm:py-4 pb-[env(safe-area-inset-bottom)]'>
+          <div className='max-w-full sm:max-w-4xl mx-auto'>
             {/* Image preview (if any) */}
             {selectedImagePreview && (
               <div className='mb-2 flex items-center gap-3'>
@@ -946,13 +971,13 @@ export default function Chat({ setView, isDark, toggleDark }) {
               </div>
             )}
             <div className='flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end'>
-              <div className='flex-1 relative'>
+              <div className='flex-1 relative min-w-0'>
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder='Type your message... (Shift+Enter for new line)'
-                  className='w-full px-3 sm:px-5 py-3 sm:py-4 border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl sm:rounded-2xl focus:border-indigo-600 focus:outline-none resize-none pr-8 sm:pr-12 shadow-sm text-sm sm:text-base'
+                  className='w-full px-3 sm:px-5 py-3 sm:py-4 border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl sm:rounded-2xl focus:border-indigo-600 focus:outline-none resize-none pr-8 sm:pr-12 shadow-sm text-sm sm:text-base'
                   rows={1}
                   style={{ minHeight: '48px', maxHeight: '200px' }}
                   onInput={(e) => {
