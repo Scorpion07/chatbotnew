@@ -6,7 +6,7 @@ const runtimeBaseUrl = (typeof window !== 'undefined' && window.location && wind
 
 export const config = {
   api: {
-    baseUrl: import.meta.env.VITE_API_URL || runtimeBaseUrl || "https://talk-sphere.com/api",
+    baseUrl: import.meta.env.VITE_API_URL || runtimeBaseUrl || "https://talk-sphere.com",
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 10000,
     endpoints: {
       auth: "/api/auth",
