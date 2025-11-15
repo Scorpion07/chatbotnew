@@ -46,7 +46,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      axios.get(getApiUrl('/api/auth/me'), {
+      axios.get(getApiUrl('/auth/me'), {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setIsPremium(!!res.data?.user?.isPremium)).catch(() => {});
     }
@@ -58,7 +58,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    axios.get(getApiUrl('/api/usage'), {
+    axios.get(getApiUrl('/usage'), {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => {
       const records = res.data?.usage || [];
@@ -228,7 +228,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
         const token = localStorage.getItem('token');
 
         const res = await axios.post(
-          getApiUrl('/api/openai/image'),
+          getApiUrl('/openai/image'),
           { prompt: userMessage.content },
           { headers: token ? { Authorization: `Bearer ${token}` } : {} }
         );
@@ -286,7 +286,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
       } else if (botType === 'audio') {
         // Call backend audio endpoint and play audio
         const token = localStorage.getItem('token');
-        const audioRes = await fetch(getApiUrl('/api/openai/audio'), {
+        const audioRes = await fetch(getApiUrl('/openai/audio'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: JSON.stringify({ text: userMessage.content })
@@ -317,7 +317,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
         let convId = activeConversation;
         if (!convId) {
           try {
-            const created = await axios.post(getApiUrl('/api/conversations'), { botName: selectedModel }, { headers: { Authorization: `Bearer ${token}` } });
+            const created = await axios.post(getApiUrl('/conversations'), { botName: selectedModel }, { headers: { Authorization: `Bearer ${token}` } });
             convId = created.data.id;
             const entry = { id: convId, title: created.data.title || `Chat ${convId}`, date: new Date(created.data.updatedAt || created.data.createdAt).toLocaleDateString() };
             setConversations(prev => [entry, ...prev]);
@@ -330,7 +330,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
 
         // Start streaming
         const contentWithImage = selectedImagePreview ? `${userMessage.content}\n\n![Uploaded Image](${selectedImagePreview})` : userMessage.content;
-        const streamRes = await fetch(getApiUrl('/api/openai/chat/stream'), {
+        const streamRes = await fetch(getApiUrl('/openai/chat/stream'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -448,7 +448,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
     const token = localStorage.getItem('token');
     if (!token) { setView?.('login'); return; }
     try {
-      const res = await axios.post(getApiUrl('/api/conversations'), { botName: selectedModel }, {
+      const res = await axios.post(getApiUrl('/conversations'), { botName: selectedModel }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const conv = res.data;
@@ -473,7 +473,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    axios.get(getApiUrl('/api/conversations'), {
+    axios.get(getApiUrl('/conversations'), {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => {
       const list = (res.data || []).map(c => ({
@@ -517,7 +517,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
 
   useEffect(() => {
     let mounted = true;
-    axios.get(getApiUrl('/api/bots'))
+    axios.get(getApiUrl('/bots'))
       .then(r => { if (mounted) setBots(r.data); })
       .catch((err) => {
         console.error('Error fetching bots:', err);
@@ -555,7 +555,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
       const formData = new FormData();
       formData.append('audio', blob, 'voice.webm');
       formData.append('model', selectedModel);
-      const res = await axios.post(getApiUrl('/api/openai/transcribe'), formData, {
+      const res = await axios.post(getApiUrl('/openai/transcribe'), formData, {
         headers: { 'Content-Type': 'multipart/form-data', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
       });
       setMessages(prev => [...prev, {

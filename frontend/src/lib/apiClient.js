@@ -1,10 +1,10 @@
 import axios from 'axios';
-import { getApiUrl } from '../config';
+import config, { getApiUrl } from '../config';
 
-// Centralized axios instance for API calls
+// Create axios instance using clean base URL
 const apiClient = axios.create({
-	baseURL: getApiUrl(),
-	withCredentials: true,
+  baseURL: config.api.baseUrl + "/api",
+  withCredentials: true,
 });
 
 export default apiClient;

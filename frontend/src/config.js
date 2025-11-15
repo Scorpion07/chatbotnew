@@ -9,7 +9,7 @@ export const config = {
   // API Configuration
   api: {
     // Prefer explicit env; otherwise in production use same-origin; fallback to localhost for dev
-    baseUrl: import.meta.env.VITE_API_BASE_URL || runtimeBaseUrl || "http://localhost:5000",
+    baseUrl: import.meta.env.VITE_API_BASE_URL || runtimeBaseUrl || "https://talk-sphere.com",
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 10000,
     endpoints: {
       auth: "/api/auth",
@@ -37,7 +37,6 @@ export const config = {
       small: "/logo/logoo.png",
       large: "/logo/logoo.png",
       favicon: "/logo/logoo.png",
-      // Optional dark-mode variant. If not provided, UI will auto-adapt using CSS filters.
       dark: import.meta.env.VITE_APP_LOGO_DARK || "/logo/logoo.png"
     }
   },
@@ -87,7 +86,6 @@ export function validateConfig() {
   const warnings = [];
   const errors = [];
 
-  // Check Google Client ID
   if (config.features.googleAuth) {
     const id = config.auth.googleClientId || "";
     const looksValid = typeof id === 'string' && id.includes('.apps.googleusercontent.com');
@@ -96,7 +94,6 @@ export function validateConfig() {
     }
   }
 
-  // Check API base URL
   if (!config.api.baseUrl || config.api.baseUrl.includes("localhost")) {
     if (import.meta.env.PROD) {
       warnings.push("Using localhost API URL in production build");
@@ -106,11 +103,11 @@ export function validateConfig() {
   return { warnings, errors };
 }
 
-// Utility functions
+// ⭐ FIXED — ALWAYS RETURN https://talk-sphere.com/api/...  
 export function getApiUrl(endpoint = "") {
-  const baseUrl = import.meta.env.VITE_API_URL || 'https://talk-sphere.com/api';
-  const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  return `${baseUrl}${path}`;
+  const baseUrl = config.api.baseUrl;         // https://talk-sphere.com
+  const cleaned = endpoint.replace(/^\/?api/, ""); // remove duplicate api
+  return `${baseUrl}/api/${cleaned.replace(/^\//, "")}`;
 }
 
 export function isFeatureEnabled(feature) {
@@ -125,7 +122,7 @@ export function isDebugMode() {
   return config.debug.enabled;
 }
 
-// Legacy support - keep these for backward compatibility
+// Legacy support
 export const GOOGLE_CLIENT_ID = config.auth.googleClientId;
 export const API_BASE_URL = config.api.baseUrl;
 export const APP_NAME = config.app.name;
