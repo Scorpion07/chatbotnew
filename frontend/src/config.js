@@ -9,7 +9,7 @@ export const config = {
   // API Configuration
   api: {
     // Prefer explicit env; otherwise in production use same-origin; fallback to localhost for dev
-    baseUrl: import.meta.env.VITE_API_BASE_URL || runtimeBaseUrl || "https://talk-sphere.com",
+    baseUrl: import.meta.env.VITE_API_URL || runtimeBaseUrl || "https://talk-sphere.com/api",
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 10000,
     endpoints: {
       auth: "/api/auth",
@@ -22,7 +22,7 @@ export const config = {
 
   // Authentication Configuration
   auth: {
-    googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE",
+    googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
     tokenKey: "token",
     loginRedirect: "chat",
     logoutRedirect: "home"

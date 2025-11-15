@@ -10,7 +10,7 @@ const router = express.Router();
 // ---------- CONFIG ----------
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const TOKEN_EXPIRY = "7d";
+const TOKEN_EXPIRY = process.env.JWT_EXPIRES_IN || "7d";
 
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
@@ -92,26 +92,21 @@ router.post("/login", async (req, res) => {
 router.post("/google", async (req, res) => {
   try {
     const { credential } = req.body;
-
     if (!credential)
       return res.status(400).json({ message: "Missing Google credential" });
-
     if (!googleClient) {
       console.error("Missing GOOGLE_CLIENT_ID");
       return res.status(500).json({ message: "Google OAuth not configured" });
     }
-
+    // Verify Google ID token
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
       audience: GOOGLE_CLIENT_ID,
     });
-
     const payload = ticket.getPayload();
-    if (!payload)
+    if (!payload || payload.aud !== GOOGLE_CLIENT_ID)
       return res.status(401).json({ message: "Invalid Google token" });
-
     const { email, name, picture, sub } = payload;
-
     let user = await User.findOne({ where: { email } });
     if (!user) {
       user = await User.create({
@@ -127,9 +122,9 @@ router.post("/google", async (req, res) => {
       user.avatar = picture;
       await user.save();
     }
-
-    const token = generateToken(user);
-    return res.json({ user: sanitizeUser(user), token });
+    // Generate JWT with userId
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+    return res.json({ token, user: sanitizeUser(user) });
   } catch (err) {
     console.error("Google login error:", err);
     return res.status(500).json({ message: "Server error" });
