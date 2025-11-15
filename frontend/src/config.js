@@ -36,7 +36,9 @@ const config = {
     baseUrl: API_BASE_URL,
     timeout: Number(ENV.VITE_API_TIMEOUT || 10000),
     endpoints: {
-      auth: "/auth",
+      auth: {
+        subscribe: "/auth/subscribe"
+      },
       bots: "/bots",
       usage: "/usage",
       conversations: "/conversations",
