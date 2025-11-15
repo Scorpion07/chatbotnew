@@ -1,61 +1,79 @@
-// ======================================================
-// FRONTEND CONFIG — CLEAN + FIXED (NO DOUBLE /api/api)
-// ======================================================
+// ===============================
+// FINAL PRODUCTION CONFIG.JS
+// ===============================
 
-// Detect base URL from browser OR fallback to your domain
-const runtimeBaseUrl =
-  (typeof window !== "undefined" &&
-    window.location &&
-    window.location.origin)
-    ? window.location.origin
-    : undefined;
+// Read Vite environment variables
+const ENV = import.meta.env;
 
-export const config = {
-  api: {
-    // Final base URL (NO /api here)
-    baseUrl: import.meta.env.VITE_API_URL || runtimeBaseUrl || "https://talk-sphere.com",
+// Determine API Base URL
+// Priority:
+// 1) VITE_API_BASE_URL (prod)
+// 2) window.location.origin/api  (auto detect live domain)
+// 3) localhost fallback (dev)
+export const API_BASE_URL =
+  ENV.VITE_API_BASE_URL ||
+  (typeof window !== "undefined"
+    ? `${window.location.origin}/api`
+    : "http://127.0.0.1:5000/api");
 
-    timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 10000,
-  },
-
-  auth: {
-    googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-    tokenKey: "token",
-    loginRedirect: "chat",
-    logoutRedirect: "home"
-  },
-
-  app: {
-    name: import.meta.env.VITE_APP_NAME || "TalkSphere AI",
-    version: import.meta.env.VITE_APP_VERSION || "1.0.0",
-    description: "Access GPT-4, Claude, Gemini, and more from one beautiful interface",
-
-    logo: {
-      small: "/logo/logoo.png",
-      large: "/logo/logoo.png",
-      favicon: "/logo/logoo.png",
-      dark: import.meta.env.VITE_APP_LOGO_DARK || "/logo/logoo.png"
-    }
-  }
+// Build full API route safely
+export const getApiUrl = (endpoint = "") => {
+  if (!endpoint.startsWith("/")) endpoint = "/" + endpoint;
+  return `${API_BASE_URL}${endpoint}`;
 };
 
-// ======================================================
-// ALWAYS produces: https://talk-sphere.com/api/<endpoint>
-// NEVER produces: https://talk-sphere.com/api/api/<endpoint>
-// ======================================================
-export function getApiUrl(path = "") {
-  const base = config.api.baseUrl.replace(/\/$/, ""); // remove trailing slash
+// Clean endpoint map (no double /api)
+export const endpoints = {
+  auth: "/auth",
+  bots: "/bots",
+  usage: "/usage",
+  conversations: "/conversations",
+  openaiChatStream: "/openai/chat/stream",
+  openaiImage: "/openai/image",
+  openaiTranscribe: "/openai/transcribe",
+};
 
-  // Ensure single `/api`
-  const cleanPath = path.replace(/^\/+/, ""); // remove leading slash
+// ===============================
+// GOOGLE AUTH CONFIG
+// ===============================
 
-  return `${base}/api/${cleanPath}`;
-}
+// Must end with:  .apps.googleusercontent.com
+export const GOOGLE_CLIENT_ID =
+  ENV.VITE_GOOGLE_CLIENT_ID || "";
 
-// Feature flags
-export function isFeatureEnabled(flag) {
-  const envFlag = import.meta.env[`VITE_ENABLE_${flag?.toUpperCase()}`];
-  return envFlag === undefined ? true : envFlag === "true";
-}
+// Redirect URI for Google Identity Services
+// Works for localhost & production
+export const GOOGLE_REDIRECT_URI =
+  ENV.VITE_GOOGLE_REDIRECT_URI ||
+  (typeof window !== "undefined"
+    ? `${window.location.origin}/google-auth`
+    : "");
+
+// ===============================
+// APP CONFIG
+// ===============================
+const runtimeOrigin =
+  typeof window !== "undefined" && window.location?.origin
+    ? window.location.origin
+    : "";
+
+export const config = {
+  api: { baseUrl: API_BASE_URL },
+  auth: {
+    googleClientId: GOOGLE_CLIENT_ID,
+    tokenKey: "token",
+  },
+  app: {
+    name: ENV.VITE_APP_NAME || "TalkSphere AI",
+    version: ENV.VITE_APP_VERSION || "1.0.0",
+    origin: runtimeOrigin,
+  },
+};
+
+// Feature flags (optional)
+export const isFeatureEnabled = (flag) => {
+  const val = ENV[`VITE_ENABLE_${flag?.toUpperCase()}`];
+  return val === undefined ? true : val === "true";
+};
 
 export default config;

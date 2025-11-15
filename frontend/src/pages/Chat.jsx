@@ -492,9 +492,9 @@ export default function Chat({ setView, isDark, toggleDark }) {
     if (!activeConversation) return;
     const token = localStorage.getItem('token');
     if (!token) return;
-    axios.get(getApiUrl('/conversations/${activeConversation}`), {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => {
+      axios.get(getApiUrl(`/conversations/${activeConversation}`), {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => {
       const msgs = (res.data?.messages || []).map(m => ({
         role: m.role,
         content: m.content,
