@@ -32,6 +32,12 @@ export const GOOGLE_CLIENT_ID =
 export const GOOGLE_REDIRECT_URI =
   ENV.VITE_GOOGLE_REDIRECT_URI ||
   `${window.location.origin}/google-auth`;
+  
+export function isFeatureEnabled(flag) {
+  const key = `VITE_ENABLE_${flag?.toUpperCase()}`;
+  const envFlag = import.meta.env[key];
+  return envFlag === undefined ? true : envFlag === "true";
+}
 
 // ===============================
 // FIXED APP CONFIG (DO NOT REMOVE)
