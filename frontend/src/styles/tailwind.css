@@ -1,7 +1,81 @@
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Classy, glossy, and standard color palette for both light and dark mode */
+
+:root {
+  --brand-primary: #1a2233; /* Deep navy, more contrast */
+  --brand-accent: #2563eb; /* Rich blue, more visible */
+  --brand-success: #22c55e; /* Emerald, more vibrant */
+  --brand-warning: #f59e42; /* Warm gold */
+  --brand-error: #e11d48; /* Deep rose */
+  --brand-bg: #f5f7fa; /* Slightly warmer, elegant */
+  --brand-surface: #f9fafb; /* Soft off-white */
+  --brand-gloss: linear-gradient(180deg,rgba(255,255,255,0.8) 0%,rgba(255,255,255,0.12) 100%);
+}
+html.dark {
+	--brand-primary: #ececf1; /* ChatGPT text */
+	--brand-accent: #2563eb; /* Blue accent for both modes */
+	--brand-success: #22d3ee;
+	--brand-warning: #fbbf24;
+	--brand-error: #fb7185;
+	--brand-bg: #343541; /* ChatGPT main bg */
+	--brand-surface: #444654; /* ChatGPT chat container */
+	--brand-gloss: linear-gradient(180deg,rgba(255,255,255,0.10) 0%,rgba(255,255,255,0.02) 100%);
+}
+
+.bg-brand {
+	background: var(--brand-bg) !important;
+}
+.surface-brand {
+	background: var(--brand-surface) !important;
+}
+.text-brand-primary {
+	color: var(--brand-primary) !important;
+}
+.text-brand-accent {
+	color: var(--brand-accent) !important;
+}
+.text-brand-success {
+	color: var(--brand-success) !important;
+}
+.text-brand-warning {
+	color: var(--brand-warning) !important;
+}
+.text-brand-error {
+	color: var(--brand-error) !important;
+}
+.glossy {
+	background: var(--brand-gloss);
+	border-radius: 0.75rem;
+	box-shadow: 0 2px 12px 0 rgba(0,0,0,0.04);
+}
+
+/* Remove gradients from buttons and chips, use solid or glossy backgrounds */
+.btn-brand {
+	background: var(--brand-accent);
+	color: #fff;
+	border-radius: 0.75rem;
+	font-weight: 600;
+	box-shadow: 0 2px 8px 0 rgba(79,140,255,0.08);
+	transition: background 0.2s, box-shadow 0.2s;
+}
+.btn-brand:hover {
+	background: #2563eb;
+	box-shadow: 0 4px 16px 0 rgba(79,140,255,0.16);
+}
+.chip-brand {
+	background: var(--brand-surface);
+	color: var(--brand-accent);
+	border: 1px solid var(--brand-accent);
+	border-radius: 9999px;
+	font-weight: 500;
+	padding: 0.25rem 0.75rem;
+	box-shadow: 0 1px 4px 0 rgba(79,140,255,0.08);
+}
 
 /* Global dark-mode legibility fix:
    When the document is in dark mode but a section uses a light background (e.g., bg-white),

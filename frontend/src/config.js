@@ -34,11 +34,11 @@ export const config = {
     version: import.meta.env.VITE_APP_VERSION || "1.0.0",
     description: "Access GPT-4, Claude, Gemini, and more from one beautiful interface",
     logo: {
-      small: "/logo/logoo.jpg",
-      large: "/logo/logoo.jpg",
-      favicon: "/logo/logoo.jpg",
+      small: "/logo/logoo.png",
+      large: "/logo/logoo.png",
+      favicon: "/logo/logoo.png",
       // Optional dark-mode variant. If not provided, UI will auto-adapt using CSS filters.
-      dark: import.meta.env.VITE_APP_LOGO_DARK || ""
+      dark: import.meta.env.VITE_APP_LOGO_DARK || "/logo/logoo.png"
     }
   },
 
