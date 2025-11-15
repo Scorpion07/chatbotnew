@@ -1,11 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import config, { getApiUrl, isFeatureEnabled } from '../config.js';
-
-// Consider Google Client ID valid only if it looks like a real Web Client ID
-const hasValidGoogleClientId = () =>
-  typeof config.auth.googleClientId === 'string' &&
-  config.auth.googleClientId.includes('.apps.googleusercontent.com');
 
 export default function Login({ onLogin, setView }) {
   const [email, setEmail] = useState('');
@@ -13,53 +8,60 @@ export default function Login({ onLogin, setView }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const googleBtnRef = useRef(null);
 
-  // Initialize Google Sign-In
-  useEffect(() => {
-    if (window.google && isFeatureEnabled('googleAuth') && hasValidGoogleClientId()) {
-      window.google.accounts.id.initialize({
-        client_id: config.auth.googleClientId,
-        callback: handleGoogleSignIn,
-        auto_select: false,
-      });
+  // Google Sign-In: handle credential response
+  const handleCredentialResponse = async (response) => {
+    if (!response.credential) {
+      setError('Google sign-in failed: No credential received.');
+      return;
     }
-  }, []);
-
-  const handleGoogleSignIn = async (response) => {
     try {
       setLoading(true);
       setError('');
-      
       const res = await axios.post(getApiUrl('/api/auth/google'), {
-        credential: response.credential
+        credential: response.credential,
       });
-      
-      localStorage.setItem(config.auth.tokenKey, res.data.token);
+      localStorage.setItem('token', res.data.token);
       onLogin?.(res.data.user);
     } catch (err) {
-      setError(err.response?.data?.error || 'Google sign-in failed');
+      setError(err.response?.data?.message || 'Google sign-in failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleButtonClick = () => {
-    if (!isFeatureEnabled('googleAuth')) {
-      setError('Google Sign-In is disabled.');
-      return;
+  // Load Google Identity Services script and render button
+  useEffect(() => {
+    if (!window.google && !document.getElementById('google-gsi-script')) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.id = 'google-gsi-script';
+      document.body.appendChild(script);
+      script.onload = () => {
+        window.google?.accounts.id.initialize({
+          client_id: config.auth.googleClientId,
+          callback: handleCredentialResponse,
+        });
+        window.google?.accounts.id.renderButton(
+          googleBtnRef.current,
+          { theme: 'outline', size: 'large', width: 300 }
+        );
+      };
+    } else if (window.google) {
+      window.google.accounts.id.initialize({
+        client_id: config.auth.googleClientId,
+        callback: handleCredentialResponse,
+      });
+      window.google.accounts.id.renderButton(
+        googleBtnRef.current,
+        { theme: 'outline', size: 'large', width: 300 }
+      );
     }
-
-    if (!hasValidGoogleClientId()) {
-      setError('Google Sign-In is not configured correctly.');
-      return;
-    }
-    
-    if (window.google) {
-      window.google.accounts.id.prompt();
-    } else {
-      setError('Google Sign-In not loaded. Please refresh the page.');
-    }
-  };
+    // eslint-disable-next-line
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -67,10 +69,10 @@ export default function Login({ onLogin, setView }) {
     setError('');
     try {
       const res = await axios.post(getApiUrl('/api/auth/login'), { email, password });
-      localStorage.setItem(config.auth.tokenKey, res.data.token);
-      onLogin?.(res.data.isPremium);
+      localStorage.setItem('token', res.data.token);
+      onLogin?.(res.data.user);
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -119,8 +121,8 @@ export default function Login({ onLogin, setView }) {
           <div className="flex-1 border-t border-gray-200"></div>
         </div>
 
-        {/* Google Sign-In Button (Google Identity Services) */}
-        <div id="google-signin-btn" style={{ marginTop: 16 }}></div>
+        {/* Google Sign-In Button */}
+        <div ref={googleBtnRef} style={{ marginTop: 16 }}></div>
 
         <div className="text-sm text-gray-600 mt-4 text-center">
           Don't have an account? <span className="text-indigo-600 cursor-pointer" onClick={() => setView?.('signup')}>Create one</span>

@@ -7,14 +7,11 @@ import { authRequired } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// ---------- CONFIG ----------
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const TOKEN_EXPIRY = process.env.JWT_EXPIRES_IN || "7d";
-
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
-// ---------- HELPERS ----------
 function generateToken(user) {
   return jwt.sign(
     {
@@ -32,20 +29,10 @@ function sanitizeUser(user) {
   return safe;
 }
 
-// ---------- METHOD GUARDS ----------
-router.all(["/signup", "/login", "/google"], (req, res, next) => {
-  if (req.method === "POST" || req.method === "OPTIONS") return next();
-  res.set("Allow", "POST, OPTIONS");
-  return res.sendStatus(405);
-});
-
-// ------------------------------------------------------
-// ✅ SIGNUP
-// ------------------------------------------------------
+// Signup
 router.post("/signup", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password)
       return res.status(400).json({ message: "Email and password required" });
 
@@ -64,13 +51,10 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// ------------------------------------------------------
-// ✅ LOGIN
-// ------------------------------------------------------
+// Login
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({ where: { email } });
     if (!user || !user.password)
       return res.status(401).json({ message: "Invalid credentials" });
@@ -86,9 +70,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ------------------------------------------------------
-// ✅ GOOGLE SIGN-IN
-// ------------------------------------------------------
+// Google Sign-In (GIS)
 router.post("/google", async (req, res) => {
   try {
     const { credential } = req.body;
@@ -122,69 +104,21 @@ router.post("/google", async (req, res) => {
       user.avatar = picture;
       await user.save();
     }
-    // Generate JWT with userId
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+    // Generate JWT
+    const token = generateToken(user);
     return res.json({ token, user: sanitizeUser(user) });
   } catch (err) {
     console.error("Google login error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(401).json({ message: "Invalid or expired Google credential" });
   }
 });
 
-// ------------------------------------------------------
-// ✅ /me (requires token in Authorization: Bearer XXX)
-// ------------------------------------------------------
-router.get("/me", async (req, res) => {
+// /me
+router.get("/me", authRequired, async (req, res) => {
   try {
-    const auth = req.headers.authorization;
-    if (!auth)
-      return res.status(401).json({ message: "Missing Authorization header" });
-
-    const token = auth.split(" ")[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    const user = await User.findByPk(decoded.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    return res.json({ user: sanitizeUser(user) });
+    return res.json({ user: sanitizeUser(req.user) });
   } catch (err) {
-    console.error("Auth /me error:", err.message);
     return res.status(401).json({ message: "Invalid or expired token" });
-  }
-});
-
-// ------------------------------------------------------
-// ✅ LOGOUT (frontend deletes token)
-// ------------------------------------------------------
-router.post("/logout", (req, res) => {
-  return res.json({ message: "Logged out" });
-});
-
-// ------------------------------------------------------
-// ✅ PREMIUM: SUBSCRIBE (requires token)
-// ------------------------------------------------------
-router.post("/subscribe", authRequired, async (req, res) => {
-  try {
-    req.user.isPremium = true;
-    await req.user.save();
-    return res.json({ ok: true, user: sanitizeUser(req.user) });
-  } catch (err) {
-    console.error("Subscribe error:", err);
-    return res.status(500).json({ message: "Failed to subscribe" });
-  }
-});
-
-// ------------------------------------------------------
-// ✅ PREMIUM: UNSUBSCRIBE (requires token)
-// ------------------------------------------------------
-router.post("/unsubscribe", authRequired, async (req, res) => {
-  try {
-    req.user.isPremium = false;
-    await req.user.save();
-    return res.json({ ok: true, user: sanitizeUser(req.user) });
-  } catch (err) {
-    console.error("Unsubscribe error:", err);
-    return res.status(500).json({ message: "Failed to unsubscribe" });
   }
 });
 

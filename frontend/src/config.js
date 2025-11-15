@@ -1,14 +1,11 @@
 // Configuration file for frontend
-// Use public asset paths directly (frontend/public/* is served at "/")
-// Resolve API base URL at runtime for prod if env is not set
+
 const runtimeBaseUrl = (typeof window !== 'undefined' && window.location && window.location.origin)
   ? window.location.origin
   : undefined;
 
 export const config = {
-  // API Configuration
   api: {
-    // Prefer explicit env; otherwise in production use same-origin; fallback to localhost for dev
     baseUrl: import.meta.env.VITE_API_URL || runtimeBaseUrl || "https://talk-sphere.com/api",
     timeout: parseInt(import.meta.env.VITE_API_TIMEOUT) || 10000,
     endpoints: {
@@ -19,16 +16,12 @@ export const config = {
       usage: "/api/usage"
     }
   },
-
-  // Authentication Configuration
   auth: {
     googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
     tokenKey: "token",
     loginRedirect: "chat",
     logoutRedirect: "home"
   },
-
-  // Application Configuration
   app: {
     name: import.meta.env.VITE_APP_NAME || "TalkSphere AI",
     version: import.meta.env.VITE_APP_VERSION || "1.0.0",
@@ -39,93 +32,18 @@ export const config = {
       favicon: "/logo/logoo.png",
       dark: import.meta.env.VITE_APP_LOGO_DARK || "/logo/logoo.png"
     }
-  },
-
-  // Feature Flags
-  features: {
-    googleAuth: import.meta.env.VITE_ENABLE_GOOGLE_AUTH !== "false",
-    darkMode: import.meta.env.VITE_ENABLE_DARK_MODE !== "false",
-    voiceInput: import.meta.env.VITE_ENABLE_VOICE_INPUT !== "false",
-    imageUpload: import.meta.env.VITE_ENABLE_IMAGE_UPLOAD !== "false",
-    premium: import.meta.env.VITE_ENABLE_PREMIUM !== "false",
-    analytics: import.meta.env.VITE_ENABLE_ANALYTICS === "true",
-    devSubscribe: import.meta.env.VITE_ENABLE_DEV_SUBSCRIBE === "true"
-  },
-
-  // UI Configuration
-  ui: {
-    theme: {
-      primary: "indigo",
-      secondary: "purple",
-      success: "green",
-      warning: "yellow",
-      error: "red"
-    },
-    animations: import.meta.env.VITE_ENABLE_ANIMATIONS !== "false",
-    transitions: import.meta.env.VITE_ENABLE_TRANSITIONS !== "false"
-  },
-
-  // Limits and Constraints
-  limits: {
-    freeUserQueries: parseInt(import.meta.env.VITE_FREE_USER_LIMIT) || 5,
-    maxFileSize: import.meta.env.VITE_MAX_FILE_SIZE || "10MB",
-    maxMessageLength: parseInt(import.meta.env.VITE_MAX_MESSAGE_LENGTH) || 4000,
-    rateLimitWindow: parseInt(import.meta.env.VITE_RATE_LIMIT_WINDOW) || 86400000
-  },
-
-  // Development/Debug Configuration
-  debug: {
-    enabled: import.meta.env.DEV || import.meta.env.VITE_DEBUG === "true",
-    showApiCalls: import.meta.env.VITE_DEBUG_API === "true",
-    showStateChanges: import.meta.env.VITE_DEBUG_STATE === "true"
   }
 };
 
-// Validation functions
-export function validateConfig() {
-  const warnings = [];
-  const errors = [];
-
-  if (config.features.googleAuth) {
-    const id = config.auth.googleClientId || "";
-    const looksValid = typeof id === 'string' && id.includes('.apps.googleusercontent.com');
-    if (!looksValid) {
-      warnings.push("Google Sign-In is enabled but CLIENT_ID appears invalid or is not configured");
-    }
-  }
-
-  if (!config.api.baseUrl || config.api.baseUrl.includes("localhost")) {
-    if (import.meta.env.PROD) {
-      warnings.push("Using localhost API URL in production build");
-    }
-  }
-
-  return { warnings, errors };
+export function getApiUrl(path = '') {
+  const base = config.api.baseUrl.replace(/\/$/, '');
+  if (!path) return base;
+  return base + (path.startsWith('/') ? path : '/' + path);
 }
 
-// ⭐ FIXED — ALWAYS RETURN https://talk-sphere.com/api/...  
-export function getApiUrl(endpoint = "") {
-  const baseUrl = config.api.baseUrl;         // https://talk-sphere.com
-  const cleaned = endpoint.replace(/^\/?api/, ""); // remove duplicate api
-  return `${baseUrl}/api/${cleaned.replace(/^\//, "")}`;
+export function isFeatureEnabled(flag) {
+  const envFlag = import.meta.env[`VITE_ENABLE_${flag?.toUpperCase()}`];
+  return envFlag === undefined ? true : envFlag === 'true';
 }
-
-export function isFeatureEnabled(feature) {
-  return config.features[feature] || false;
-}
-
-export function getThemeColor(color) {
-  return config.ui.theme[color] || color;
-}
-
-export function isDebugMode() {
-  return config.debug.enabled;
-}
-
-// Legacy support
-export const GOOGLE_CLIENT_ID = config.auth.googleClientId;
-export const API_BASE_URL = config.api.baseUrl;
-export const APP_NAME = config.app.name;
-export const VERSION = config.app.version;
 
 export default config;
