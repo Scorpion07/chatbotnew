@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { config, getApiUrl } from '../config.js';
+import config, { getApiUrl } from '../config.js';
 import axios from 'axios';
 import Home from './Home.jsx';
 import Admin from './Admin.jsx';
