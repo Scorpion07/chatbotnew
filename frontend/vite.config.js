@@ -13,7 +13,11 @@ export default defineConfig({
   server: {
     port: 5001,
     proxy: {
-      '/api': 'http://localhost:5000'
+        '/api': {
+          target: process.env.VITE_API_URL || 'https://talk-sphere.com/api',
+          changeOrigin: true,
+          secure: false,
+        }
     }
   }
 });

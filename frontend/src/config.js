@@ -108,7 +108,7 @@ export function validateConfig() {
 
 // Utility functions
 export function getApiUrl(endpoint = "") {
-  const baseUrl = config.api.baseUrl.replace(/\/$/, "");
+  const baseUrl = import.meta.env.VITE_API_URL || 'https://talk-sphere.com/api';
   const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   return `${baseUrl}${path}`;
 }
