@@ -9,16 +9,15 @@ const runtimeOrigin =
     ? window.location.origin
     : "http://127.0.0.1:5000";
 
-// API_BASE_URL should NOT include /api — we will append it automatically.
-export const API_BASE_URL =
-  (ENV.VITE_API_BASE_URL || runtimeOrigin).replace(/\/$/, "");
+// API base URL (should include /api)
+export const API_BASE_URL = ENV.VITE_API_BASE_URL || "https://talk-sphere.com/api";
 
 // Build full API URL
-export function getApiUrl(endpoint = "") {
-  if (!endpoint) return `${API_BASE_URL}/api`;
-  if (!endpoint.startsWith("/")) endpoint = "/" + endpoint;
-  if (endpoint.startsWith("/api")) return API_BASE_URL + endpoint;
-  return API_BASE_URL + "/api" + endpoint;
+// Build API URL helper (does NOT add /api)
+export const getApiUrl = (path = "") => {
+  if (!path.startsWith("/")) path = "/" + path;
+  return API_BASE_URL + path;
+};
 }
 
 // Feature flags
