@@ -18,7 +18,6 @@ export const getApiUrl = (path = "") => {
   if (!path.startsWith("/")) path = "/" + path;
   return API_BASE_URL + path;
 };
-}
 
 // Feature flags
 export function isFeatureEnabled(flag) {
