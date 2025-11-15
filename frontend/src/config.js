@@ -1,20 +1,31 @@
-// ================================
-// FINAL FIXED CONFIG.JS
-// ================================
+// ============================
+// FINAL CONFIG.JS (WORKING)
+// ============================
 
 const ENV = import.meta.env;
 
-// Base API (no double /api/api issue)
-export const API_BASE_URL =
-  ENV.VITE_API_BASE_URL || "http://127.0.0.1:5000/api";
+const runtimeOrigin =
+  typeof window !== "undefined" && window.location
+    ? window.location.origin
+    : "";
 
-// Build URL properly
+// -----------------------------
+// API BASE URL
+// -----------------------------
+export const API_BASE_URL =
+  ENV.VITE_API_BASE_URL ||
+  runtimeOrigin + "/api" ||
+  "http://127.0.0.1:5000/api";
+
+// Normalize full API URL builder
 export const getApiUrl = (endpoint = "") => {
   if (!endpoint.startsWith("/")) endpoint = "/" + endpoint;
-  return `${API_BASE_URL}${endpoint}`;
+  return API_BASE_URL.replace(/\/$/, "") + endpoint;
 };
 
-// Clean endpoints
+// -----------------------------
+// ENDPOINT MAP
+// -----------------------------
 export const endpoints = {
   auth: "/auth",
   bots: "/bots",
@@ -25,31 +36,51 @@ export const endpoints = {
   openaiTranscribe: "/openai/transcribe",
 };
 
-// Google OAuth
+// -----------------------------
+// GOOGLE OAUTH
+// -----------------------------
 export const GOOGLE_CLIENT_ID =
-  ENV.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE";
+  ENV.VITE_GOOGLE_CLIENT_ID || "";
 
 export const GOOGLE_REDIRECT_URI =
   ENV.VITE_GOOGLE_REDIRECT_URI ||
-  window.location.origin + "/google-auth";
+  runtimeOrigin + "/google-auth";
 
-// Feature flag helper (needed for Login/Signup)
-export function isFeatureEnabled(flag) {
+// -----------------------------
+// FEATURE FLAGS
+// -----------------------------
+export const isFeatureEnabled = (flag) => {
   const key = `VITE_ENABLE_${flag?.toUpperCase()}`;
-  const envFlag = ENV[key];
-  return envFlag === undefined ? true : envFlag === "true";
-}
+  const val = ENV[key];
+  return val === undefined ? true : val === "true";
+};
 
-// Default export for compatibility
-const config = {
-  API_BASE_URL,
-  endpoints,
-  GOOGLE_CLIENT_ID,
-  GOOGLE_REDIRECT_URI,
+// -----------------------------
+// APP CONFIG (FIXES YOUR ERROR)
+// -----------------------------
+export const config = {
+  apiBase: API_BASE_URL,
+
   auth: {
+    googleClientId: GOOGLE_CLIENT_ID,
     tokenKey: "token",
-    googleClientId: GOOGLE_CLIENT_ID
-  }
+    loginRedirect: "chat",
+    logoutRedirect: "home",
+  },
+
+  app: {
+    name: ENV.VITE_APP_NAME || "TalkSphere AI",
+    version: ENV.VITE_APP_VERSION || "1.0.0",
+    description: "Your unified AI workspace",
+
+    // REQUIRED by App.jsx — prevents crash!
+    logo: {
+      small: "/logo/logoo.png",
+      large: "/logo/logoo.png",
+      favicon: "/logo/logoo.png",
+      dark: "/logo/logoo.png",
+    },
+  },
 };
 
 export default config;
