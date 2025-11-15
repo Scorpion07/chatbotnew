@@ -18,7 +18,7 @@ export default function Admin() {
     // Fetch current user for gating controls
     const token = localStorage.getItem('token');
     if (token) {
-      axios.get(getApiUrl('/api/auth/me'), { headers: { Authorization: `Bearer ${token}` } })
+      axios.get(getApiUrl('/auth/me'), { headers: { Authorization: `Bearer ${token}` } })
         .then(res => setUser(res.data?.user || null))
         .catch(() => setUser(null));
     } else {
@@ -34,8 +34,8 @@ export default function Admin() {
 
   async function load() {
     const [b, s] = await Promise.all([
-      axios.get(getApiUrl('/api/bots')),
-      axios.get(getApiUrl('/api/stats'))
+      axios.get(getApiUrl('/bots')),
+      axios.get(getApiUrl('/stats'))
     ]);
     setBots(b.data); setStats(s.data);
   }
@@ -44,7 +44,7 @@ export default function Admin() {
     e.preventDefault();
     // Optional: include auth header if available (backend may enforce perms)
     const token = localStorage.getItem('token');
-    await axios.post(getApiUrl('/api/bots'), form, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+    await axios.post(getApiUrl('/bots'), form, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
     setForm({name:'',provider:''});
   }
 
@@ -59,7 +59,7 @@ export default function Admin() {
     const token = localStorage.getItem('token');
     if (!token) return alert('Login required');
     try {
-      await axios.post(getApiUrl('/api/admin/users/premium'), { email: userEmail, isPremium: !!userPremium }, {
+      await axios.post(getApiUrl('/admin/users/premium'), { email: userEmail, isPremium: !!userPremium }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert('Updated');

@@ -46,7 +46,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await axios.get(getApiUrl('/api/auth/me'), {
+      const res = await axios.get(getApiUrl('/auth/me'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAuthed(true);
@@ -63,7 +63,7 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
-    axios.get(getApiUrl('/api/bots'))
+    axios.get(getApiUrl('/bots'))
       .then(r => { if (mounted) setBots(r.data || []); })
       .catch(() => setBots([]));
     return () => { mounted = false; };

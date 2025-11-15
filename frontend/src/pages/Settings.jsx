@@ -13,12 +13,12 @@ export default function Settings({ user: initialUser, onLogout, onUpgrade }) {
     if (!token) return;
     try {
       setLoading(true);
-      const res = await axios.get(getApiUrl('/api/auth/me'), {
+      const res = await axios.get(getApiUrl('/auth/me'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUser(res.data?.user || null);
       // Also fetch usage
-      const usageRes = await axios.get(getApiUrl('/api/usage'), {
+      const usageRes = await axios.get(getApiUrl('/usage'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsage(usageRes.data.usage || []);
@@ -35,7 +35,7 @@ export default function Settings({ user: initialUser, onLogout, onUpgrade }) {
       // Load usage on mount
       const token = localStorage.getItem('token');
       if (!token) return;
-      axios.get(getApiUrl('/api/usage'), {
+      axios.get(getApiUrl('/usage'), {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setUsage(res.data.usage || [])).catch(() => {});
     }

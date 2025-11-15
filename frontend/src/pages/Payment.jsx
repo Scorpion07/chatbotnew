@@ -32,7 +32,7 @@ export default function Payment({ onComplete }) {
       }
 
       // In production, remove this direct call and let the payment gateway webhook handle it
-      await axios.post(getApiUrl('/api/auth/subscribe'), {}, {
+      await axios.post(getApiUrl('/auth/subscribe'), {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage('Payment successful! Premium unlocked.');
