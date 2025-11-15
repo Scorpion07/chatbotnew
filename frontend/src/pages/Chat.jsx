@@ -492,7 +492,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
     if (!activeConversation) return;
     const token = localStorage.getItem('token');
     if (!token) return;
-    axios.get(getApiUrl(`/api/conversations/${activeConversation}`), {
+    axios.get(getApiUrl('/conversations/${activeConversation}`), {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => {
       const msgs = (res.data?.messages || []).map(m => ({
@@ -649,7 +649,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
                         // Optionally persist to backend
                         const token = localStorage.getItem('token');
                         if (token) {
-                          axios.patch(getApiUrl(`/api/conversations/${conv.id}`), { title: newTitle }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+                          axios.patch(getApiUrl('/conversations/${conv.id}`), { title: newTitle }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
                         }
                       }}
                       onClick={e => e.stopPropagation()}
@@ -665,7 +665,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
                       e.stopPropagation();
                       const token = localStorage.getItem('token');
                       if (!token) return;
-                      axios.delete(getApiUrl(`/api/conversations/${conv.id}`), { headers: { Authorization: `Bearer ${token}` } })
+                      axios.delete(getApiUrl('/conversations/${conv.id}`), { headers: { Authorization: `Bearer ${token}` } })
                         .then(() => {
                           setConversations(prev => prev.filter(c => c.id !== conv.id));
                           if (activeConversation === conv.id) {

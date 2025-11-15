@@ -1,9 +1,8 @@
-import axios from 'axios';
-import config, { getApiUrl } from '../config';
+import axios from "axios";
+import { config } from "../config.js";
 
-// Create axios instance using clean base URL
 const apiClient = axios.create({
-  baseURL: config.api.baseUrl,
+  baseURL: config.api.baseUrl,  // NO getApiUrl() here
   withCredentials: true,
 });
 
