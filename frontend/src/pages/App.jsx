@@ -124,7 +124,11 @@ export default function App() {
                         onClick={() => {
                           try { localStorage.setItem('selectedBotName', bot.name); } catch {}
                           setShowBotsMenu(false);
-                          setView('chat');
+                          if (!isLoggedIn()) {
+                            setView('login');
+                          } else {
+                            setView('chat');
+                          }
                         }}
                         className='w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 text-left'
                       >
@@ -147,7 +151,16 @@ export default function App() {
                 </div>
               )}
             </div>
-            <button onClick={() => setView('chat')} className={`px-4 py-2 rounded-lg font-medium transition-all ${view === 'chat' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+            <button
+              onClick={() => {
+                if (!isLoggedIn()) {
+                  setView('login');
+                } else {
+                  setView('chat');
+                }
+              }}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${view === 'chat' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+            >
               Start Chat
             </button>
             {!authed ? (
@@ -234,7 +247,17 @@ export default function App() {
                 <button onClick={() => { setView('pricing'); setMenuOpen(false); }} className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${view === 'pricing' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}>
                   Pricing
                 </button>
-                <button onClick={() => { setView('chat'); setMenuOpen(false); }} className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${view === 'chat' ? 'bg-indigo-600 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (!isLoggedIn()) {
+                      setView('login');
+                    } else {
+                      setView('chat');
+                    }
+                  }}
+                  className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all ${view === 'chat' ? 'bg-indigo-600 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                >
                   Start Chat
                 </button>
                 {!authed ? (
