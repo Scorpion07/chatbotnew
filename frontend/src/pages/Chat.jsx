@@ -724,6 +724,18 @@ export default function Chat({ setView, isDark, toggleDark }) {
             
             {/* Bot Selector Dropdown */}
             <div className='flex gap-2 items-center relative'>
+              {/* Recent Conversations button (mobile only) */}
+              <button
+                className='sm:hidden flex items-center gap-1 px-3 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold text-brand-primary hover:border-indigo-500 transition-colors'
+                style={{ whiteSpace: 'nowrap' }}
+                onClick={() => setShowRecent(v => !v)}
+                title={showRecent ? 'Hide Recent Conversations' : 'Show Recent Conversations'}
+              >
+                <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d={showRecent ? 'M19 9l-7 7-7-7' : 'M5 15l7-7 7 7'} />
+                </svg>
+                Recent
+              </button>
               {/* Dark mode toggle */}
               <button
                 type='button'
