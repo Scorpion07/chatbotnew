@@ -1,3 +1,10 @@
+export const GOOGLE_REDIRECT_URI =
+  import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
+  window.location.origin + "/google-auth";
+
+export function isFeatureEnabled(key) {
+  return FEATURES[key] === true;
+}
 // frontend/src/config.js
 const ENV = import.meta.env || {};
 
