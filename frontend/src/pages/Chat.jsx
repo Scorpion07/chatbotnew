@@ -726,8 +726,8 @@ export default function Chat({ setView, isDark, toggleDark }) {
             <div className='flex gap-2 items-center relative'>
               {/* Recent Conversations button (mobile only) */}
               <button
-                className='sm:hidden flex items-center gap-1 px-3 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold text-brand-primary hover:border-indigo-500 transition-colors'
-                style={{ whiteSpace: 'nowrap' }}
+                className='sm:hidden flex items-center gap-1 px-3 py-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold text-brand-primary hover:border-indigo-500 transition-colors ml-[-8px]'
+                style={{ whiteSpace: 'nowrap', marginLeft: '-8px' }}
                 onClick={() => setShowRecent(v => !v)}
                 title={showRecent ? 'Hide Recent Conversations' : 'Show Recent Conversations'}
               >
