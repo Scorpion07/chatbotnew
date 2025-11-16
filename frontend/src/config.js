@@ -2,9 +2,6 @@ export const GOOGLE_REDIRECT_URI =
   import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
   window.location.origin + "/google-auth";
 
-export function isFeatureEnabled(key) {
-  return FEATURES[key] === true;
-}
 // frontend/src/config.js
 const ENV = import.meta.env || {};
 
@@ -30,11 +27,9 @@ export function getApiUrl(path = '') {
 // Google client id and redirect URI (front-end)
 export const GOOGLE_CLIENT_ID = ENV.VITE_GOOGLE_CLIENT_ID || ENV.VITE_GOOGLE_CLIENT || '';
 
-// simple feature flag helper - default to true if not defined
-export function isFeatureEnabled(flag) {
-  const key = `VITE_ENABLE_${String(flag || '').toUpperCase()}`;
-  if (typeof ENV[key] === 'undefined') return true;
-  return String(ENV[key]).toLowerCase() === 'true';
+
+export function isFeatureEnabled(key) {
+  return FEATURES[key] === true;
 }
 
 // full runtime config object used across the app
