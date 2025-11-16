@@ -42,9 +42,9 @@ export default function Signup({ onSignup, setView }) {
       setLoading(true);
       setError("");
 
+      // Only send credential, no redirect
       const res = await axios.post(getApiUrl("/auth/google"), {
-        credential: response.credential,
-        redirect: GOOGLE_REDIRECT_URI
+        credential: response.credential
       });
 
       localStorage.setItem("token", res.data.token);

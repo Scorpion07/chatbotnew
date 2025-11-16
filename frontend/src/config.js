@@ -10,13 +10,14 @@ const runtimeOrigin =
     : "http://127.0.0.1:5000";
 
 // API base URL (should include /api)
-export const API_BASE_URL = ENV.VITE_API_BASE_URL || "https://talk-sphere.com/api";
+// Use VITE_API_URL for local dev, fallback to localhost:5000/api, then prod
+export const API_BASE_URL = ENV.VITE_API_URL || ENV.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 // Build full API URL
-// Build API URL helper (does NOT add /api)
+// Helper: never add /api here, endpoints must not start with /api
 export const getApiUrl = (path = "") => {
   if (!path.startsWith("/")) path = "/" + path;
-  return API_BASE_URL + path;
+  return API_BASE_URL.replace(/\/$/, "") + path;
 };
 
 // Feature flags

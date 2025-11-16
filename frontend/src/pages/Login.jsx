@@ -182,7 +182,9 @@ export default function Login({ onLogin, setView }) {
 
         {/* Google Button */}
         {isFeatureEnabled("googleAuth") && hasValidGoogleClientId() ? (
-          <div ref={googleBtnRef} style={{ marginTop: 16 }}></div>
+          <div className="flex justify-center mt-4">
+            <div ref={googleBtnRef}></div>
+          </div>
         ) : (
           <p className="text-center text-xs text-red-500">
             Google Sign-In is not configured correctly.
