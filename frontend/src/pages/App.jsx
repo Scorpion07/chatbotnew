@@ -79,9 +79,9 @@ export default function App() {
   return (
     <div className='min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 dark:from-gray-900 dark:to-gray-950 dark:text-gray-100'>
   <header className='bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800'>
-        <div className='max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center'>
+        <div className='max-w-7xl mx-auto px-2 sm:px-6 py-3 flex flex-wrap justify-between items-center gap-y-2'>
           <div
-            className='flex flex-row items-center gap-3 sm:gap-2 cursor-pointer min-w-0'
+            className='flex flex-row items-center gap-2 sm:gap-2 cursor-pointer min-w-0 flex-shrink flex-grow md:flex-grow-0'
             style={{ minHeight: 40 }}
             onClick={() => setView('home')}
           >
@@ -91,7 +91,7 @@ export default function App() {
               className='w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0'
               style={{ display: 'block' }}
             />
-            <span className='truncate'>
+            <span className='truncate max-w-[120px] xs:max-w-[160px] sm:max-w-none'>
               <h1 className='text-base sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap'>
                 {config.app.name}
               </h1>
@@ -214,7 +214,7 @@ export default function App() {
 
 
           {/* Mobile: Hamburger and Dark Mode Button Aligned */}
-          <div className="flex md:hidden items-center gap-2">
+          <div className="flex md:hidden items-center gap-2 ml-auto">
             <button
               onClick={() => setIsDark((d) => !d)}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
