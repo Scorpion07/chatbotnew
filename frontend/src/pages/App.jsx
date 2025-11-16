@@ -43,7 +43,7 @@ export default function App() {
     if (!token) {
       setAuthed(false);
       setUser(null);
-      return;
+      // Do not return; allow anonymous chat access
     }
     try {
       const res = await axios.get(getApiUrl('/auth/me'), {

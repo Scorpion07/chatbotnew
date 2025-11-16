@@ -49,7 +49,7 @@ export default function Admin() {
   }
 
   async function delBot(id){
-    await axios.delete(getApiUrl(`/api/bots/${id}`));
+    await axios.delete(getApiUrl(`/bots/${id}`));
   }
 
   // Manual stats editing removed; stats are real-time from server via socket

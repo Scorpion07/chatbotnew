@@ -1,64 +1,65 @@
-// src/config.js
-// Clean, final, conflict-free version
-
+// frontend/src/config.js
 const ENV = import.meta.env || {};
 
-// Detect origin (browser or fallback)
+// runtime origin fallback for dev builds (Vite)
 const runtimeOrigin =
-  typeof window !== "undefined" && window.location
+  (typeof window !== 'undefined' && window.location && window.location.origin)
     ? window.location.origin
-    : "http://127.0.0.1:5000";
+    : 'http://127.0.0.1:5173';
 
-// API base URL (should include /api)
-// Use VITE_API_URL for local dev, fallback to localhost:5000/api, then prod
-export const API_BASE_URL = ENV.VITE_API_URL || ENV.VITE_API_BASE_URL || "http://localhost:5000/api";
+// API base: prefer explicit env, then current origin (dev), then production host
+export const API_BASE_URL =
+  ENV.VITE_API_BASE_URL ||
+  (runtimeOrigin.endsWith('/') ? runtimeOrigin.slice(0, -1) : runtimeOrigin) + '/api' ||
+  'https://talk-sphere.com/api';
 
-// Build full API URL
-// Helper: never add /api here, endpoints must not start with /api
-export const getApiUrl = (path = "") => {
-  if (!path.startsWith("/")) path = "/" + path;
-  return API_BASE_URL.replace(/\/$/, "") + path;
-};
-
-// Feature flags
-export function isFeatureEnabled(flag) {
-  if (!flag) return true;
-  const v = ENV[`VITE_ENABLE_${flag.toUpperCase()}`];
-  if (v === undefined || v === null) return true;
-  return String(v).toLowerCase() === "true";
+// helper to build API URLs robustly (no double slashes)
+export function getApiUrl(path = '') {
+  const base = String(API_BASE_URL).replace(/\/$/, '');
+  if (!path) return base;
+  return base + (path.startsWith('/') ? path : '/' + path);
 }
 
-// Google client ID
-export const GOOGLE_CLIENT_ID = ENV.VITE_GOOGLE_CLIENT_ID || "";
+// Google client id and redirect URI (front-end)
+export const GOOGLE_CLIENT_ID = ENV.VITE_GOOGLE_CLIENT_ID || ENV.VITE_GOOGLE_CLIENT || '';
 
-// Default config object (this is what App.jsx loads)
+// simple feature flag helper - default to true if not defined
+export function isFeatureEnabled(flag) {
+  const key = `VITE_ENABLE_${String(flag || '').toUpperCase()}`;
+  if (typeof ENV[key] === 'undefined') return true;
+  return String(ENV[key]).toLowerCase() === 'true';
+}
+
+// full runtime config object used across the app
 const config = {
   api: {
     baseUrl: API_BASE_URL,
-    timeout: Number(ENV.VITE_API_TIMEOUT || 10000),
+    timeout: parseInt(ENV.VITE_API_TIMEOUT || '10000', 10),
     endpoints: {
-      auth: {
-        subscribe: "/auth/subscribe"
-      },
-      bots: "/bots",
-      usage: "/usage",
-      conversations: "/conversations",
-      openai: "/openai",
-    },
+      auth: '/auth',
+      bots: '/bots',
+      usage: '/usage',
+      conversations: '/conversations',
+      openai: '/openai',
+      stats: '/stats'
+    }
   },
   auth: {
+    // NOTE: front-end expects config.auth.googleClientId (string) and config.auth.tokenKey
     googleClientId: GOOGLE_CLIENT_ID,
-    tokenKey: ENV.VITE_TOKEN_KEY || "token",
+    tokenKey: ENV.VITE_TOKEN_KEY || 'token',
+    loginRedirect: ENV.VITE_LOGIN_REDIRECT || 'chat',
+    logoutRedirect: ENV.VITE_LOGOUT_REDIRECT || 'home'
   },
   app: {
-    name: ENV.VITE_APP_NAME || "TalkSphere AI",
-    version: ENV.VITE_APP_VERSION || "1.0.0",
+    name: ENV.VITE_APP_NAME || 'TalkSphere AI',
+    version: ENV.VITE_APP_VERSION || '1.0.0',
     logo: {
-      small: "/logo/logoo.png",
-      large: "/logo/logoo.png",
-      favicon: "/logo/logoo.png",
-    },
-  },
+      small: ENV.VITE_APP_LOGO_SMALL || '/logo/logoo.png',
+      large: ENV.VITE_APP_LOGO_LARGE || '/logo/logoo.png',
+      favicon: ENV.VITE_APP_FAVICON || '/logo/logoo.png',
+    }
+  }
 };
 
 export default config;
