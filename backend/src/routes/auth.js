@@ -3,7 +3,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import { User } from "../models/index.js";
+
 import { authRequired } from "../middleware/auth.js";
+import { subscribeUser } from "../controllers/authController.js";
 
 const router = express.Router();
 
@@ -28,6 +30,9 @@ function sanitizeUser(user) {
   const { password, ...safe } = user.toJSON();
   return safe;
 }
+
+// Subscribe (placeholder)
+router.post("/subscribe", subscribeUser);
 
 // Signup
 router.post("/signup", async (req, res) => {
