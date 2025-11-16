@@ -604,12 +604,13 @@ export default function Chat({ setView, isDark, toggleDark }) {
         </div>
         <div className={`flex-1 overflow-y-auto p-1 custom-scrollbar transition-all duration-200 ${showRecent ? '' : 'h-0 overflow-hidden'} rounded-2xl shadow-lg`}
           style={{ background: 'var(--brand-bg)', backgroundColor: 'var(--brand-bg)', margin: '8px 6px', boxShadow: '0 4px 24px 0 rgba(0,0,0,0.10)' }}>
-          <div className='flex flex-row items-center px-2 py-1 mb-1'>
+          <div className='flex flex-row items-center px-2 py-1 mb-1 relative'>
             <span className='text-xs font-semibold text-brand-primary flex-1'>Recent Conversations</span>
             <button
-              className='text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-300 ml-auto md:ml-0'
+              className='text-xs px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-300 ml-auto md:ml-0 md:static absolute right-2 top-1 md:right-0 md:top-0'
               onClick={() => setShowRecent(v => !v)}
               title={showRecent ? 'Hide' : 'Show'}
+              style={{ zIndex: 10 }}
             >
               {showRecent ? (
                 <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>

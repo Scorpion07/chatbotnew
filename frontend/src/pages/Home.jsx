@@ -1,7 +1,15 @@
 
 import React from 'react';
+import { isLoggedIn } from '../components/ProtectedRoute';
 
 export default function Home({ setView }) {
+  const handleStartChat = () => {
+    if (isLoggedIn()) {
+      setView('chat');
+    } else {
+      setView('login');
+    }
+  };
   return (
     <div className='min-h-screen'>
       {/* Hero Section */}
@@ -20,7 +28,7 @@ export default function Home({ setView }) {
             Access GPT-4, Claude, Gemini, and more from a single, beautiful interface. Switch between models instantly and unlock the full potential of AI.
           </p>
           <div className='flex flex-col sm:flex-row gap-4 justify-center items-center'>
-            <button onClick={() => setView('chat')} className='px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold shadow-xl shadow-indigo-200 hover:shadow-2xl hover:shadow-indigo-300 transition-all transform hover:scale-105'>
+            <button onClick={handleStartChat} className='px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold shadow-xl shadow-indigo-200 hover:shadow-2xl hover:shadow-indigo-300 transition-all transform hover:scale-105'>
               Start Chatting Now
               <svg className='inline-block w-5 h-5 ml-2' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                 <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M13 7l5 5m0 0l-5 5m5-5H6' />
@@ -153,7 +161,7 @@ export default function Home({ setView }) {
           <div className='bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl p-12 shadow-2xl'>
             <h2 className='text-4xl font-bold text-white mb-4'>Ready to get started?</h2>
             <p className='text-xl text-indigo-100 mb-8'>Join thousands of users already chatting with AI</p>
-            <button onClick={() => setView('chat')} className='px-8 py-4 bg-white text-indigo-600 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 shadow-xl'>
+            <button onClick={handleStartChat} className='px-8 py-4 bg-white text-indigo-600 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 shadow-xl'>
               Start Your First Chat
             </button>
           </div>
