@@ -167,7 +167,14 @@ export default function Chat({ setView, isDark, toggleDark }) {
   const handleSend = async () => {
     if (!input.trim() && !selectedImage && !searchQuery) return;
 
-    // Do not block on client; rely on server 402 to enforce limits
+    // Check client-side limit for non-premium users before sending
+    if (!isPremium) {
+      const currentCount = queryCount[selectedModel] || 0;
+      if (currentCount >= FREE_USER_LIMIT) {
+        setShowUpgrade(true);
+        return;
+      }
+    }
 
     let userMessage;
     let botType = 'text';
@@ -339,7 +346,18 @@ export default function Chat({ setView, isDark, toggleDark }) {
           body: JSON.stringify({ message: contentWithImage, botName: selectedModel, conversationId: convId })
         });
 
-        if (!streamRes.ok || !streamRes.body) {
+        if (!streamRes.ok) {
+          // Check for 402 Payment Required (quota exceeded)
+          if (streamRes.status === 402) {
+            setShowUpgrade(true);
+            setMessages(prev => prev.slice(0, -1)); // Remove placeholder
+            setIsTyping(false);
+            return;
+          }
+          throw new Error('Stream failed');
+        }
+        
+        if (!streamRes.body) {
           throw new Error('Stream failed');
         }
 

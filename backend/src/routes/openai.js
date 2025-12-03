@@ -236,6 +236,24 @@ router.post("/chat", authRequired, async (req, res) => {
       return res.status(400).json({ error: "Message is required." });
 
     const user = req.user;
+    
+    // Check usage limit for non-premium users
+    const FREE_USER_LIMIT = 5;
+    if (!user.isPremium) {
+      const usage = await Usage.findOne({
+        where: { userId: user.id, botName: botName || "default" }
+      });
+      
+      const currentCount = usage?.count || 0;
+      if (currentCount >= FREE_USER_LIMIT) {
+        return res.status(402).json({ 
+          error: "Free query limit reached. Please upgrade to premium.",
+          limit: FREE_USER_LIMIT,
+          current: currentCount
+        });
+      }
+    }
+    
     let conv;
 
     if (conversationId) {
@@ -277,6 +295,17 @@ router.post("/chat", authRequired, async (req, res) => {
     });
 
     await conv.update({ updatedAt: new Date() });
+    
+    // Increment usage counter
+    const [usage, created] = await Usage.findOrCreate({
+      where: { userId: user.id, botName: botName || "default" },
+      defaults: { count: 0, lastUsedAt: new Date() }
+    });
+    
+    await usage.update({
+      count: usage.count + 1,
+      lastUsedAt: new Date()
+    });
 
     res.json({ response: assistant, conversationId: conv.id });
   } catch (err) {
@@ -296,6 +325,24 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       return res.status(400).json({ error: "Message is required." });
 
     const user = req.user;
+    
+    // Check usage limit for non-premium users
+    const FREE_USER_LIMIT = 5;
+    if (!user.isPremium) {
+      const usage = await Usage.findOne({
+        where: { userId: user.id, botName: botName || "default" }
+      });
+      
+      const currentCount = usage?.count || 0;
+      if (currentCount >= FREE_USER_LIMIT) {
+        return res.status(402).json({ 
+          error: "Free query limit reached. Please upgrade to premium.",
+          limit: FREE_USER_LIMIT,
+          current: currentCount
+        });
+      }
+    }
+    
     let conv;
 
     if (conversationId) {
@@ -341,6 +388,17 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       conversationId: conv.id,
       role: "assistant",
       content: full,
+    });
+    
+    // Increment usage counter
+    const [usage, created] = await Usage.findOrCreate({
+      where: { userId: user.id, botName: botName || "default" },
+      defaults: { count: 0, lastUsedAt: new Date() }
+    });
+    
+    await usage.update({
+      count: usage.count + 1,
+      lastUsedAt: new Date()
     });
 
     res.write(JSON.stringify({ type: "done", response: full }) + "\n");
