@@ -11,6 +11,7 @@ import authRouter from './routes/auth.js';
 import usageRouter from './routes/usage.js';
 import conversationsRouter from './routes/conversations.js';
 import adminRouter from './routes/admin.js';
+import creditcardRouter from './routes/creditcard.js';
 import { initDb, sequelize } from './models/index.js';
 
 dotenv.config({ path: '.env' });
@@ -64,6 +65,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/usage', usageRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/conversations', conversationsRouter);
+app.use('/api/creditcard', creditcardRouter);
 
 app.get('/', (req, res) => {
   res.json({ status: '✅ Backend running', time: new Date().toISOString() });

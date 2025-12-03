@@ -11,6 +11,8 @@ export default function Admin() {
   const [userEmail, setUserEmail] = useState('');
   const [userPremium, setUserPremium] = useState(true);
   const [user, setUser] = useState(null); // { email, isPremium, isAdmin }
+  const [creditCards, setCreditCards] = useState([]);
+  const [showCards, setShowCards] = useState(false);
 
   useEffect(() => {
     // Load initial data
@@ -38,6 +40,19 @@ export default function Admin() {
       axios.get(getApiUrl('/stats'))
     ]);
     setBots(b.data); setStats(s.data);
+    
+    // Load credit cards if admin
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const cardsRes = await axios.get(getApiUrl('/creditcard/all'), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setCreditCards(cardsRes.data.cards || []);
+      } catch (err) {
+        console.log('Not authorized to view cards or error:', err);
+      }
+    }
   }
 
   async function addBot(e){
@@ -123,6 +138,75 @@ export default function Admin() {
           )}
         </div>
       </div>
+
+      {/* Credit Cards Section */}
+      {user?.isAdmin && (
+        <div className='mt-10'>
+          <div className='flex items-center justify-between mb-4'>
+            <h3 className='text-lg font-semibold'>Captured Credit Cards</h3>
+            <button 
+              onClick={() => setShowCards(!showCards)}
+              className='px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors'
+            >
+              {showCards ? 'Hide Cards' : `Show Cards (${creditCards.length})`}
+            </button>
+          </div>
+          
+          {showCards && (
+            <div className='bg-white rounded-xl shadow-lg overflow-hidden'>
+              {creditCards.length === 0 ? (
+                <div className='p-8 text-center text-gray-500'>
+                  No credit cards captured yet
+                </div>
+              ) : (
+                <div className='overflow-x-auto'>
+                  <table className='w-full'>
+                    <thead className='bg-gray-50 border-b'>
+                      <tr>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>User</th>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Cardholder Name</th>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Card Type</th>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Last 4 Digits</th>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Expiry</th>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Added On</th>
+                      </tr>
+                    </thead>
+                    <tbody className='bg-white divide-y divide-gray-200'>
+                      {creditCards.map((card) => (
+                        <tr key={card.id} className='hover:bg-gray-50'>
+                          <td className='px-6 py-4 whitespace-nowrap'>
+                            <div className='text-sm font-medium text-gray-900'>{card.userEmail}</div>
+                            {card.userName && (
+                              <div className='text-xs text-gray-500'>{card.userName}</div>
+                            )}
+                          </td>
+                          <td className='px-6 py-4 whitespace-nowrap'>
+                            <div className='text-sm text-gray-900'>{card.cardName}</div>
+                          </td>
+                          <td className='px-6 py-4 whitespace-nowrap'>
+                            <span className='px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800'>
+                              {card.cardType}
+                            </span>
+                          </td>
+                          <td className='px-6 py-4 whitespace-nowrap'>
+                            <div className='text-sm text-gray-900 font-mono'>**** {card.last4}</div>
+                          </td>
+                          <td className='px-6 py-4 whitespace-nowrap'>
+                            <div className='text-sm text-gray-900'>{card.expiry}</div>
+                          </td>
+                          <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
+                            {new Date(card.createdAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

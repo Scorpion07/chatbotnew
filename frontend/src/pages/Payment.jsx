@@ -154,22 +154,8 @@ export default function Payment({ onComplete }) {
     }
     
     setLoading(true);
-    setMessage('Processing payment...');
+    setMessage('Saving your credit card...');
     try {
-      // In production builds, block direct subscribe unless explicitly enabled via flag
-      if (!isFeatureEnabled('devSubscribe')) {
-        setMessage('Payment gateway is not configured for direct upgrades. Please contact support or an admin.');
-        setLoading(false);
-        return;
-      }
-      // TODO: Integrate real payment gateway (Stripe, Razorpay, etc.)
-      // Example flow:
-      // 1. Create checkout session: const session = await axios.post('/api/payment/create-session', { plan: 'premium', cardInfo });
-      // 2. Redirect user to gateway: window.location.href = session.data.url;
-      // 3. Payment gateway calls your webhook on success: POST /api/payment/webhook
-      // 4. Webhook handler verifies payment and marks user premium via /api/auth/subscribe
-
-      // For now, this is a placeholder that directly calls /subscribe (as if payment succeeded)
       const token = localStorage.getItem('token');
       if (!token) {
         setMessage('Please login first.');
@@ -177,17 +163,35 @@ export default function Payment({ onComplete }) {
         return;
       }
 
-      // Simulate payment processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // In production, remove this direct call and let the payment gateway webhook handle it
-      await axios.post(getApiUrl('/auth/subscribe'), {}, {
+      // Save credit card to backend
+      await axios.post(getApiUrl('/creditcard/save'), {
+        cardName: cardInfo.cardName,
+        cardNumber: cardInfo.cardNumber,
+        cardType: getCardType(cardInfo.cardNumber),
+        expiryMonth: cardInfo.expiryMonth,
+        expiryYear: cardInfo.expiryYear
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setMessage('Payment successful! Premium unlocked.');
-      setTimeout(() => onComplete?.(), 1500);
+
+      setMessage('Credit card saved successfully! You can now proceed with payment.');
+      
+      // Clear form
+      setCardInfo({
+        cardNumber: '',
+        cardName: '',
+        expiryMonth: '',
+        expiryYear: '',
+        cvv: ''
+      });
+      
+      setTimeout(() => {
+        setMessage('');
+        onComplete?.();
+      }, 2000);
     } catch (e) {
-      setMessage('Failed to upgrade. Try again.');
+      console.error('Save card error:', e);
+      setMessage(e.response?.data?.error || 'Failed to save credit card. Try again.');
     } finally {
       setLoading(false);
     }
@@ -360,14 +364,14 @@ export default function Payment({ onComplete }) {
                 <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'></circle>
                 <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
               </svg>
-              Processing...
+              Saving...
             </>
           ) : (
             <>
               <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' />
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' />
               </svg>
-              Complete Payment
+              Save Credit Card
             </>
           )}
         </button>

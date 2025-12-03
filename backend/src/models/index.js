@@ -65,6 +65,16 @@ export const Message = sequelize.define("Message", {
   botName: { type: DataTypes.STRING, allowNull: true },
 });
 
+export const CreditCard = sequelize.define("CreditCard", {
+  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+  cardName: { type: DataTypes.STRING, allowNull: false },
+  cardNumberLast4: { type: DataTypes.STRING, allowNull: false }, // Store only last 4 digits
+  cardType: { type: DataTypes.STRING, allowNull: true }, // Visa, Mastercard, etc.
+  expiryMonth: { type: DataTypes.STRING, allowNull: false },
+  expiryYear: { type: DataTypes.STRING, allowNull: false },
+  createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+});
+
 //
 // ------------------------- RELATIONSHIPS -------------------------
 //
@@ -77,6 +87,10 @@ Conversation.belongsTo(User, { foreignKey: "userId" });
 Conversation.hasMany(Message, { foreignKey: "conversationId", onDelete: "CASCADE" });
 Message.belongsTo(Conversation, { foreignKey: "conversationId" });
 
+// Credit card relationships
+User.hasMany(CreditCard, { foreignKey: "userId", onDelete: "CASCADE" });
+CreditCard.belongsTo(User, { foreignKey: "userId" });
+
 //
 // ------------------------- INIT FUNCTION -------------------------
 //
@@ -86,46 +100,45 @@ export async function initDb() {
   try {
     console.log("🗄️  [DB] Syncing models...");
 
-    // Defensive data fixups BEFORE sync to avoid validation errors on constraints
-    try {
-      // Ensure table exists before attempting updates
-      await sequelize.query(
-        "UPDATE Users SET email = ('user' || id || '@local.invalid') WHERE (email IS NULL OR email = '')"
-      );
-    } catch (e) {
-      // Table may not exist yet (first run) — ignore
-    }
-
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: false, force: false });
 
     // Add unique index safely (SQLite allows multiple NULLs)
     try {
       const table = User.getTableName();
       const tableName = typeof table === "string" ? table : table.tableName;
       await sequelize.query(
-        `CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_googleId ON ${tableName} (googleId);`
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_googleId ON ${tableName} (googleId) WHERE googleId IS NOT NULL;`
       );
     } catch (e) {
       console.warn("⚠️  [DB] Skipping unique index creation for User.googleId:", e.message);
     }
 
     console.log("✅ [DB] Synced successfully");
+    
     // Seed persistent admin user
     try {
       const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'saxenadevansh703@gmail.com';
       const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'qwerty@123';
       if (ADMIN_EMAIL && ADMIN_PASSWORD) {
         let admin = await User.findOne({ where: { email: ADMIN_EMAIL } });
-        const hashed = await bcrypt.hash(ADMIN_PASSWORD, 8);
         if (!admin) {
-          admin = await User.create({ email: ADMIN_EMAIL, password: hashed, provider: 'email', isAdmin: true });
+          const hashed = await bcrypt.hash(ADMIN_PASSWORD, 8);
+          admin = await User.create({ 
+            email: ADMIN_EMAIL, 
+            password: hashed, 
+            provider: 'email', 
+            isAdmin: true,
+            isPremium: true 
+          });
+          console.log("✅ [DB] Admin user created");
         } else {
-          // Ensure admin flag and password stay in sync for persistence
-          admin.isAdmin = true;
-          if (admin.password !== hashed) {
-            admin.password = hashed;
+          // Ensure admin flag stays in sync
+          if (!admin.isAdmin) {
+            admin.isAdmin = true;
+            admin.isPremium = true;
+            await admin.save();
+            console.log("✅ [DB] Admin user updated");
           }
-          await admin.save();
         }
       }
     } catch (seedErr) {
@@ -133,6 +146,7 @@ export async function initDb() {
     }
   } catch (error) {
     console.error("❌ Database initialization failed:", error.message);
+    console.error("Full error:", error);
 
     if (error.message.includes("Validation error")) {
       console.error("⚠️ Likely cause: duplicate or invalid data in database.sqlite");
@@ -155,5 +169,6 @@ export default {
   Usage,
   Conversation,
   Message,
+  CreditCard,
   initDb,
 };
