@@ -101,7 +101,7 @@ export async function initDb() {
   try {
     console.log("🗄️  [DB] Syncing models...");
 
-    await sequelize.sync({ alter: false, force: false });
+    await sequelize.sync({ alter: true, force: false });
 
     // Add unique index safely (SQLite allows multiple NULLs)
     try {
