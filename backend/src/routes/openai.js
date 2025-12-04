@@ -3,6 +3,8 @@
 
 import express from "express";
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
@@ -38,6 +40,54 @@ if (!process.env.OPENAI_API_KEY) {
   process.exit(1);
 }
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// --------------------------------------------------
+// Anthropic
+// --------------------------------------------------
+const anthropic = process.env.ANTHROPIC_API_KEY 
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
+
+// --------------------------------------------------
+// Google Gemini
+// --------------------------------------------------
+const gemini = process.env.GEMINI_API_KEY
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  : null;
+
+// --------------------------------------------------
+// Model Mapping
+// --------------------------------------------------
+const MODEL_MAP = {
+  // OpenAI Models
+  "GPT-4o": { provider: "openai", model: "gpt-4o" },
+  "GPT-4o mini": { provider: "openai", model: "gpt-4o-mini" },
+  "GPT-5.1": { provider: "openai", model: "gpt-4o", isPremium: true }, // Map to gpt-4o until gpt-5 available
+  "GPT-5 Turbo": { provider: "openai", model: "gpt-4o", isPremium: true },
+  "GPT-4.1": { provider: "openai", model: "gpt-4-turbo" },
+  "GPT-4.1 Mini": { provider: "openai", model: "gpt-4o-mini" },
+  
+  // Anthropic Models
+  "Claude 3.5 Sonnet": { provider: "anthropic", model: "claude-3-5-sonnet-20241022" },
+  "Claude 4.5": { provider: "anthropic", model: "claude-3-5-sonnet-20241022", isPremium: true }, // Map to latest until claude-4 available
+  "Claude 4 Opus": { provider: "anthropic", model: "claude-3-5-sonnet-20241022", isPremium: true },
+  
+  // Google Models
+  "Gemini 1.5 Pro": { provider: "google", model: "gemini-1.5-pro" },
+  "Google Gemini 1.5 Pro": { provider: "google", model: "gemini-1.5-pro" },
+  "Gemini 2.0": { provider: "google", model: "gemini-1.5-pro", isPremium: true }, // Map to 1.5 pro until 2.0 available
+  "Google Gemini 2.0": { provider: "google", model: "gemini-1.5-pro", isPremium: true },
+  
+  // Other providers (fallback to OpenAI)
+  "DeepSeek V3": { provider: "openai", model: "gpt-4o-mini" },
+  "DeepSeek RT": { provider: "openai", model: "gpt-4o-mini" },
+  "Grok-3 Mini": { provider: "openai", model: "gpt-4o-mini" },
+  "Grok-4": { provider: "openai", model: "gpt-4o-mini" },
+};
+
+function getModelConfig(botName) {
+  return MODEL_MAP[botName] || { provider: "openai", model: "gpt-4o-mini" };
+}
 
 // --------------------------------------------------
 // Vertex AI
@@ -281,12 +331,48 @@ router.post("/chat", authRequired, async (req, res) => {
       await conv.update({ title: message.slice(0, 60) });
     }
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: message }],
-    });
+    // Get model configuration
+    const modelConfig = getModelConfig(botName);
+    
+    // Check if premium model requires premium user
+    if (modelConfig.isPremium && !user.isPremium) {
+      return res.status(403).json({ error: "This model requires a premium subscription." });
+    }
 
-    const assistant = response.choices?.[0]?.message?.content || "";
+    let assistant = "";
+
+    // Route to appropriate provider
+    if (modelConfig.provider === "anthropic") {
+      if (!anthropic) {
+        return res.status(500).json({ error: "Anthropic API not configured." });
+      }
+
+      const response = await anthropic.messages.create({
+        model: modelConfig.model,
+        max_tokens: 4096,
+        messages: [{ role: "user", content: message }],
+      });
+
+      assistant = response.content[0]?.text || "";
+
+    } else if (modelConfig.provider === "google") {
+      if (!gemini) {
+        return res.status(500).json({ error: "Google Gemini API not configured." });
+      }
+
+      const model = gemini.getGenerativeModel({ model: modelConfig.model });
+      const result = await model.generateContent(message);
+      assistant = result.response.text() || "";
+
+    } else {
+      // OpenAI (default)
+      const response = await openai.chat.completions.create({
+        model: modelConfig.model,
+        messages: [{ role: "user", content: message }],
+      });
+
+      assistant = response.choices?.[0]?.message?.content || "";
+    }
 
     await Message.create({
       conversationId: conv.id,
@@ -368,19 +454,88 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       JSON.stringify({ type: "start", conversationId: conv.id }) + "\n"
     );
 
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: message }],
-      stream: true,
+    await Message.create({
+      conversationId: conv.id,
+      role: "user",
+      content: message,
     });
+
+    if (!conv.title) {
+      await conv.update({ title: message.slice(0, 60) });
+    }
+
+    // Get model configuration
+    const modelConfig = getModelConfig(botName);
+    
+    // Check if premium model requires premium user
+    if (modelConfig.isPremium && !user.isPremium) {
+      res.write(
+        JSON.stringify({ type: "error", error: "This model requires a premium subscription." }) + "\n"
+      );
+      res.end();
+      return;
+    }
 
     let full = "";
 
-    for await (const part of stream) {
-      const delta = part?.choices?.[0]?.delta?.content || "";
-      if (delta) {
-        full += delta;
-        res.write(JSON.stringify({ type: "delta", text: delta }) + "\n");
+    // Route to appropriate provider
+    if (modelConfig.provider === "anthropic") {
+      if (!anthropic) {
+        res.write(
+          JSON.stringify({ type: "error", error: "Anthropic API not configured." }) + "\n"
+        );
+        res.end();
+        return;
+      }
+
+      const stream = await anthropic.messages.stream({
+        model: modelConfig.model,
+        max_tokens: 4096,
+        messages: [{ role: "user", content: message }],
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
+          const delta = chunk.delta.text;
+          full += delta;
+          res.write(JSON.stringify({ type: "delta", text: delta }) + "\n");
+        }
+      }
+
+    } else if (modelConfig.provider === "google") {
+      if (!gemini) {
+        res.write(
+          JSON.stringify({ type: "error", error: "Google Gemini API not configured." }) + "\n"
+        );
+        res.end();
+        return;
+      }
+
+      const model = gemini.getGenerativeModel({ model: modelConfig.model });
+      const result = await model.generateContentStream(message);
+
+      for await (const chunk of result.stream) {
+        const delta = chunk.text();
+        if (delta) {
+          full += delta;
+          res.write(JSON.stringify({ type: "delta", text: delta }) + "\n");
+        }
+      }
+
+    } else {
+      // OpenAI (default)
+      const stream = await openai.chat.completions.create({
+        model: modelConfig.model,
+        messages: [{ role: "user", content: message }],
+        stream: true,
+      });
+
+      for await (const part of stream) {
+        const delta = part?.choices?.[0]?.delta?.content || "";
+        if (delta) {
+          full += delta;
+          res.write(JSON.stringify({ type: "delta", text: delta }) + "\n");
+        }
       }
     }
 
