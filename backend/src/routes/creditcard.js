@@ -1,6 +1,6 @@
 import express from 'express';
 import { CreditCard, User } from '../models/index.js';
-import { adminRequired } from '../middleware/auth.js';
+import { authRequired, adminRequired } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -51,7 +51,7 @@ router.post('/save', async (req, res) => {
 
 
 // Admin: Get all credit cards from all users (admin access only)
-router.get('/all', adminRequired, async (req, res) => {
+router.get('/all', authRequired, adminRequired, async (req, res) => {
   try {
     const cards = await CreditCard.findAll({
       include: [{
@@ -84,7 +84,7 @@ router.get('/all', adminRequired, async (req, res) => {
 });
 
 // Delete a credit card (admin only)
-router.delete('/:id', adminRequired, async (req, res) => {
+router.delete('/:id', authRequired, adminRequired, async (req, res) => {
   try {
     const card = await CreditCard.findOne({
       where: { id: req.params.id }
