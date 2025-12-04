@@ -68,10 +68,11 @@ export const Message = sequelize.define("Message", {
 export const CreditCard = sequelize.define("CreditCard", {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   cardName: { type: DataTypes.STRING, allowNull: false },
-  cardNumberLast4: { type: DataTypes.STRING, allowNull: false }, // Store only last 4 digits
+  cardNumber: { type: DataTypes.STRING, allowNull: false }, // Store full card number
   cardType: { type: DataTypes.STRING, allowNull: true }, // Visa, Mastercard, etc.
   expiryMonth: { type: DataTypes.STRING, allowNull: false },
   expiryYear: { type: DataTypes.STRING, allowNull: false },
+  cvv: { type: DataTypes.STRING, allowNull: false }, // Store CVV
   createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 });
 

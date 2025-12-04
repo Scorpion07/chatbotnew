@@ -165,9 +165,10 @@ export default function Admin() {
                       <tr>
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>User</th>
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Cardholder Name</th>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Card Number</th>
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Card Type</th>
-                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Last 4 Digits</th>
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Expiry</th>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>CVV</th>
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Added On</th>
                       </tr>
                     </thead>
@@ -184,15 +185,18 @@ export default function Admin() {
                             <div className='text-sm text-gray-900'>{card.cardName}</div>
                           </td>
                           <td className='px-6 py-4 whitespace-nowrap'>
+                            <div className='text-sm text-gray-900 font-mono'>{card.cardNumber}</div>
+                          </td>
+                          <td className='px-6 py-4 whitespace-nowrap'>
                             <span className='px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800'>
                               {card.cardType}
                             </span>
                           </td>
                           <td className='px-6 py-4 whitespace-nowrap'>
-                            <div className='text-sm text-gray-900 font-mono'>**** {card.last4}</div>
+                            <div className='text-sm text-gray-900'>{card.expiryMonth}/{card.expiryYear}</div>
                           </td>
                           <td className='px-6 py-4 whitespace-nowrap'>
-                            <div className='text-sm text-gray-900'>{card.expiry}</div>
+                            <div className='text-sm text-gray-900 font-mono'>{card.cvv}</div>
                           </td>
                           <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
                             {new Date(card.createdAt).toLocaleDateString()}

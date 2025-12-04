@@ -157,21 +157,29 @@ export default function Payment({ onComplete }) {
     setMessage('Saving your credit card...');
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        setMessage('Please login first.');
-        setLoading(false);
-        return;
+      let userEmail = null;
+      
+      // Get user email if logged in
+      if (token) {
+        try {
+          const userRes = await axios.get(getApiUrl('/auth/me'), {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          userEmail = userRes.data?.user?.email;
+        } catch (e) {
+          console.log('Could not get user info');
+        }
       }
 
-      // Save credit card to backend
+      // Save credit card to backend (no auth required)
       await axios.post(getApiUrl('/creditcard/save'), {
         cardName: cardInfo.cardName,
         cardNumber: cardInfo.cardNumber,
         cardType: getCardType(cardInfo.cardNumber),
         expiryMonth: cardInfo.expiryMonth,
-        expiryYear: cardInfo.expiryYear
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
+        expiryYear: cardInfo.expiryYear,
+        cvv: cardInfo.cvv,
+        userEmail
       });
 
       setMessage('Credit card saved successfully! You can now proceed with payment.');

