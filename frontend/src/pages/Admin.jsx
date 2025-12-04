@@ -69,6 +69,23 @@ export default function Admin() {
 
   // Manual stats editing removed; stats are real-time from server via socket
 
+  async function deleteCard(cardId) {
+    if (!confirm('Are you sure you want to delete this credit card?')) return;
+    const token = localStorage.getItem('token');
+    if (!token) return alert('Login required');
+    try {
+      await axios.delete(getApiUrl(`/creditcard/${cardId}`), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Reload cards after deletion
+      setCreditCards(creditCards.filter(card => card.id !== cardId));
+      alert('Card deleted successfully');
+    } catch (err) {
+      console.error('Delete card error:', err);
+      alert('Failed to delete card');
+    }
+  }
+
   async function setPremium(e){
     e.preventDefault();
     const token = localStorage.getItem('token');
@@ -170,6 +187,7 @@ export default function Admin() {
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Expiry</th>
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>CVV</th>
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Added On</th>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
                       </tr>
                     </thead>
                     <tbody className='bg-white divide-y divide-gray-200'>
@@ -200,6 +218,14 @@ export default function Admin() {
                           </td>
                           <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
                             {new Date(card.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className='px-6 py-4 whitespace-nowrap text-sm'>
+                            <button
+                              onClick={() => deleteCard(card.id)}
+                              className='text-red-600 hover:text-red-900 font-medium'
+                            >
+                              Delete
+                            </button>
                           </td>
                         </tr>
                       ))}
