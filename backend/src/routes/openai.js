@@ -94,9 +94,9 @@ const MODEL_MAP = {
   "Gemini 2.0": { provider: "google", model: "gemini-2.5-pro", isPremium: true },
   "Google Gemini 2.0": { provider: "google", model: "gemini-2.5-pro", isPremium: true },
   
-  // DeepSeek Models - Fully functional with DeepSeek API
-  "DeepSeek V3": { provider: "deepseek", model: "deepseek-chat", isPremium: false },
-  "DeepSeek RT": { provider: "deepseek", model: "deepseek-reasoner", isPremium: false },
+  // DeepSeek Models - Fallback to OpenAI
+  "DeepSeek V3": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
+  "DeepSeek RT": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
   
   // Grok Models - Fallback to OpenAI (X API not publicly available yet)
   "Grok-3 Mini": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
