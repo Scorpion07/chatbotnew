@@ -379,6 +379,8 @@ export default function Chat({ setView, isDark, toggleDark }) {
               if (!line) continue;
               try {
                 const evt = JSON.parse(line);
+                console.log('📨 [STREAM] Received event:', evt);
+                
                 if (evt.type === 'delta' && evt.text) {
                   setMessages(prev => {
                     const updated = [...prev];
@@ -392,11 +394,29 @@ export default function Chat({ setView, isDark, toggleDark }) {
                     return updated;
                   });
                 } else if (evt.type === 'done') {
+                  console.log('✅ [STREAM] Stream completed');
                   // Stream complete - turn off indicators
                   setIsThinking(false);
                   setIsTyping(false);
+                } else if (evt.type === 'error') {
+                  console.error('❌ [STREAM] Error from backend:', evt.error);
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    // Replace placeholder with error message
+                    for (let i = updated.length - 1; i >= 0; i--) {
+                      if (updated[i].role === 'assistant' && updated[i].type === 'text') {
+                        updated[i] = { ...updated[i], content: `Error: ${evt.error}` };
+                        break;
+                      }
+                    }
+                    return updated;
+                  });
+                  setIsThinking(false);
+                  setIsTyping(false);
                 }
-              } catch { /* ignore parse errors */ }
+              } catch (e) {
+                console.error('❌ [STREAM] Parse error:', e, 'Line:', line);
+              }
             }
           }
         }

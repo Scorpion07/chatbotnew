@@ -487,19 +487,28 @@ router.post("/chat/stream", authRequired, async (req, res) => {
         return;
       }
 
+      console.log(`🔵 [ANTHROPIC] Streaming with model: ${modelConfig.model}`);
+      
       const stream = await anthropic.messages.stream({
         model: modelConfig.model,
         max_tokens: 4096,
         messages: [{ role: "user", content: message }],
       });
 
+      let chunkCount = 0;
       for await (const chunk of stream) {
+        chunkCount++;
+        console.log(`🔵 [ANTHROPIC] Chunk ${chunkCount}:`, chunk.type, chunk);
+        
         if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
           const delta = chunk.delta.text;
           full += delta;
           res.write(JSON.stringify({ type: "delta", text: delta }) + "\n");
+          console.log(`🔵 [ANTHROPIC] Sent delta:`, delta.substring(0, 50));
         }
       }
+      
+      console.log(`🔵 [ANTHROPIC] Stream complete. Total chunks: ${chunkCount}, Full response length: ${full.length}`);
 
     } else if (modelConfig.provider === "google") {
       if (!gemini) {
@@ -559,9 +568,11 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     res.end();
   } catch (err) {
     console.error("❌ Streaming error:", err);
+    console.error("❌ Error stack:", err.stack);
+    console.error("❌ Error details:", JSON.stringify(err, null, 2));
     try {
       res.write(
-        JSON.stringify({ type: "error", error: "Streaming failed." }) + "\n"
+        JSON.stringify({ type: "error", error: "Streaming failed: " + err.message }) + "\n"
       );
     } catch (_) {}
     res.end();
