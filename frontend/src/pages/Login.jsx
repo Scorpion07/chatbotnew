@@ -16,7 +16,10 @@ export default function Login({ onLogin, setView }) {
 
   // Google Sign-In callback
   const handleCredentialResponse = async (response) => {
+    console.log('🔵 [GOOGLE LOGIN] Credential response received:', response ? 'Valid' : 'Invalid');
+    
     if (!response.credential) {
+      console.error('❌ [GOOGLE LOGIN] No credential in response');
       setError("Google sign-in failed: No credential received.");
       return;
     }
@@ -24,16 +27,20 @@ export default function Login({ onLogin, setView }) {
     try {
       setLoading(true);
       setError("");
-
+      
+      console.log('🔵 [GOOGLE LOGIN] Sending credential to backend...');
       const res = await axios.post(getApiUrl("/auth/google"), {
         credential: response.credential,
       });
 
+      console.log('✅ [GOOGLE LOGIN] Backend response:', res.data);
       localStorage.setItem(config.auth.tokenKey, res.data.token);
 
       onLogin?.(res.data.user);
+      console.log('✅ [GOOGLE LOGIN] Redirecting to chat...');
       setView?.("chat");
     } catch (err) {
+      console.error('❌ [GOOGLE LOGIN] Error:', err.response?.data || err.message);
       setError(err.response?.data?.error || "Google login failed");
     } finally {
       setLoading(false);
@@ -42,34 +49,59 @@ export default function Login({ onLogin, setView }) {
 
   // Load Google script + render button
   useEffect(() => {
-    if (!isFeatureEnabled("googleAuth") || !hasValidGoogleClientId()) return;
+    console.log('🔵 [GOOGLE] Checking Google Auth config...');
+    console.log('🔵 [GOOGLE] Feature enabled:', isFeatureEnabled("googleAuth"));
+    console.log('🔵 [GOOGLE] Client ID:', config.auth.googleClientId);
+    console.log('🔵 [GOOGLE] Valid Client ID:', hasValidGoogleClientId());
+    
+    if (!isFeatureEnabled("googleAuth") || !hasValidGoogleClientId()) {
+      console.log('⚠️ [GOOGLE] Google Auth not properly configured, skipping button render');
+      return;
+    }
 
     const existing = document.getElementById("google-gsi-script");
 
     const initGoogle = () => {
-      if (!window.google?.accounts?.id) return;
+      console.log('🔵 [GOOGLE] Initializing Google Sign-In...');
+      if (!window.google?.accounts?.id) {
+        console.error('❌ [GOOGLE] Google API not loaded');
+        return;
+      }
 
       window.google.accounts.id.initialize({
         client_id: config.auth.googleClientId,
         callback: handleCredentialResponse,
       });
 
-      window.google.accounts.id.renderButton(googleBtnRef.current, {
-        theme: "outline",
-        size: "large",
-        width: 300,
-      });
+      if (googleBtnRef.current) {
+        console.log('✅ [GOOGLE] Rendering Google button');
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "outline",
+          size: "large",
+          width: 300,
+        });
+      } else {
+        console.error('❌ [GOOGLE] Button ref not available');
+      }
     };
 
     if (!existing) {
+      console.log('🔵 [GOOGLE] Loading Google GSI script...');
       const script = document.createElement("script");
       script.src = "https://accounts.google.com/gsi/client";
       script.async = true;
       script.defer = true;
       script.id = "google-gsi-script";
-      script.onload = initGoogle;
+      script.onload = () => {
+        console.log('✅ [GOOGLE] Script loaded successfully');
+        initGoogle();
+      };
+      script.onerror = () => {
+        console.error('❌ [GOOGLE] Failed to load Google GSI script');
+      };
       document.body.appendChild(script);
     } else {
+      console.log('🔵 [GOOGLE] Script already loaded, initializing...');
       initGoogle();
     }
   }, []);

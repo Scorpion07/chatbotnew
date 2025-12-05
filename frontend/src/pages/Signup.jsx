@@ -38,23 +38,27 @@ export default function Signup({ onSignup, setView }) {
 
   // Handle Google Credential Response
   const handleGoogleCallback = async (response) => {
+    console.log('🔵 [GOOGLE SIGNUP] Credential response received:', response ? 'Valid' : 'Invalid');
+    
     try {
       setLoading(true);
       setError("");
 
-      // Only send credential, no redirect
+      console.log('🔵 [GOOGLE SIGNUP] Sending credential to backend...');
       const res = await axios.post(getApiUrl("/auth/google"), {
         credential: response.credential
       });
 
+      console.log('✅ [GOOGLE SIGNUP] Backend response:', res.data);
       localStorage.setItem("token", res.data.token);
 
       setSuccess(true);
       onSignup?.(res.data.user);
 
+      console.log('✅ [GOOGLE SIGNUP] Redirecting to chat...');
       setTimeout(() => setView?.("chat"), 600);
     } catch (err) {
-      console.log(err);
+      console.error('❌ [GOOGLE SIGNUP] Error:', err.response?.data || err.message);
       setError(err.response?.data?.error || "Google sign-in failed");
     } finally {
       setLoading(false);
