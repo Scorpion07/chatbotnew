@@ -58,30 +58,32 @@ const gemini = (process.env.GEMINI_API_KEY && GoogleGenerativeAI)
 // Model Mapping
 // --------------------------------------------------
 const MODEL_MAP = {
-  // OpenAI Models
-  "GPT-4o": { provider: "openai", model: "gpt-4o" },
-  "GPT-4o mini": { provider: "openai", model: "gpt-4o-mini" },
+  // OpenAI Models - Fully functional with OpenAI API
+  "GPT-4o": { provider: "openai", model: "gpt-4o", isPremium: false },
+  "GPT-4o mini": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
   "GPT-5.1": { provider: "openai", model: "gpt-4o", isPremium: true }, // Map to gpt-4o until gpt-5 available
   "GPT-5 Turbo": { provider: "openai", model: "gpt-4o", isPremium: true },
-  "GPT-4.1": { provider: "openai", model: "gpt-4-turbo" },
-  "GPT-4.1 Mini": { provider: "openai", model: "gpt-4o-mini" },
+  "GPT-4.1": { provider: "openai", model: "gpt-4-turbo", isPremium: false },
+  "GPT-4.1 Mini": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
   
-  // Anthropic Models
-  "Claude 3.5 Sonnet": { provider: "anthropic", model: "claude-3-5-sonnet-20240620" },
-  "Claude 4.5": { provider: "anthropic", model: "claude-sonnet-4-5-20250929", isPremium: true },
+  // Anthropic Models - Fully functional with Anthropic API
+  "Claude 3.5 Sonnet": { provider: "anthropic", model: "claude-3-5-sonnet-20241022", isPremium: false },
+  "Claude 4.5": { provider: "anthropic", model: "claude-sonnet-4-20250514", isPremium: true },
   "Claude 4 Opus": { provider: "anthropic", model: "claude-sonnet-4-20250514", isPremium: true },
   
-  // Google Models
-  "Gemini 1.5 Pro": { provider: "google", model: "gemini-1.5-pro" },
-  "Google Gemini 1.5 Pro": { provider: "google", model: "gemini-1.5-pro" },
+  // Google Models - Fully functional with Google Gemini API
+  "Gemini 1.5 Pro": { provider: "google", model: "gemini-1.5-pro", isPremium: false },
+  "Google Gemini 1.5 Pro": { provider: "google", model: "gemini-1.5-pro", isPremium: false },
   "Gemini 2.0": { provider: "google", model: "gemini-1.5-pro", isPremium: true }, // Map to 1.5 pro until 2.0 available
   "Google Gemini 2.0": { provider: "google", model: "gemini-1.5-pro", isPremium: true },
   
-  // Other providers (fallback to OpenAI)
-  "DeepSeek V3": { provider: "openai", model: "gpt-4o-mini" },
-  "DeepSeek RT": { provider: "openai", model: "gpt-4o-mini" },
-  "Grok-3 Mini": { provider: "openai", model: "gpt-4o-mini" },
-  "Grok-4": { provider: "openai", model: "gpt-4o-mini" },
+  // DeepSeek Models - Fallback to OpenAI (no official API available yet)
+  "DeepSeek V3": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
+  "DeepSeek RT": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
+  
+  // Grok Models - Fallback to OpenAI (X API not publicly available yet)
+  "Grok-3 Mini": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
+  "Grok-4": { provider: "openai", model: "gpt-4o", isPremium: false },
 };
 
 function getModelConfig(botName) {
