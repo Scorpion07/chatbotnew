@@ -581,17 +581,27 @@ router.post(
       return res.status(400).json({ error: "Audio file is required." });
 
     try {
+      // Read file and create blob for OpenAI
+      const fileBuffer = fs.readFileSync(req.file.path);
+      const audioFile = new File([fileBuffer], req.file.originalname, { type: req.file.mimetype });
+      
       const result = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(req.file.path),
+        file: audioFile,
         model: "whisper-1",
       });
 
       res.json({ transcript: result.text });
     } catch (err) {
-      console.error("❌ Transcription error:", err);
-      res.status(500).json({ error: "Transcription failed." });
+      console.error("❌ Transcription error:", err.message, err);
+      res.status(500).json({ error: "Transcription failed: " + err.message });
     } finally {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      if (req.file && fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {
+          console.warn("⚠️ Failed to delete temp audio file:", e);
+        }
+      }
     }
   }
 );
