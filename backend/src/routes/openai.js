@@ -50,9 +50,11 @@ const anthropic = (process.env.ANTHROPIC_API_KEY && Anthropic)
 // --------------------------------------------------
 // Google Gemini
 // --------------------------------------------------
-const gemini = (process.env.GEMINI_API_KEY && GoogleGenerativeAI)
-  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+const gemini = (process.env.GOOGLE_API_KEY && GoogleGenerativeAI)
+  ? new GoogleGenerativeAI(process.env.GOOGLE_API_KEY)
   : null;
+
+console.log("🔵 Google Gemini API configured:", !!gemini);
 
 // --------------------------------------------------
 // Model Mapping
