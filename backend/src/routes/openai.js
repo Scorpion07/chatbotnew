@@ -13,7 +13,6 @@ import { GoogleAuth } from "google-auth-library";
 import { fileURLToPath } from "url";
 import fetch from "node-fetch";
 
-
 import { User, Usage, Conversation, Message } from "../models/index.js";
 import { appConfig } from "../services/configService.js";
 import { authRequired, premiumRequired } from "../middleware/auth.js";
@@ -44,14 +43,14 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // --------------------------------------------------
 // Anthropic
 // --------------------------------------------------
-const anthropic = process.env.ANTHROPIC_API_KEY 
+const anthropic = (process.env.ANTHROPIC_API_KEY && Anthropic)
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
 
 // --------------------------------------------------
 // Google Gemini
 // --------------------------------------------------
-const gemini = process.env.GEMINI_API_KEY
+const gemini = (process.env.GEMINI_API_KEY && GoogleGenerativeAI)
   ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
 
