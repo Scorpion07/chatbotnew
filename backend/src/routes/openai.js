@@ -114,6 +114,8 @@ function getModelConfig(botName) {
 function detectWeatherQuery(message) {
   const text = message.toLowerCase();
   
+  console.log('🔍 [DETECT] Input message:', text);
+  
   // Weather keywords
   const weatherKeywords = [
     'weather', 'temperature', 'temp', 'forecast', 'climate',
@@ -123,28 +125,38 @@ function detectWeatherQuery(message) {
   
   // Check if message contains weather-related keywords
   const hasWeatherKeyword = weatherKeywords.some(keyword => text.includes(keyword));
+  console.log('🔍 [DETECT] Has weather keyword:', hasWeatherKeyword);
   
   if (!hasWeatherKeyword) return null;
   
-  // Common city patterns
+  // Common city patterns - IMPROVED to catch "weather in London"
   const cityPatterns = [
     /weather (?:in |at |for )?([a-z\s]+?)(?:\?|$|\.|,)/i,
     /temperature (?:in |at |of |for )?([a-z\s]+?)(?:\?|$|\.|,)/i,
     /(?:how is|what's|whats) (?:the )?(?:weather|temperature) (?:in |at |for )?([a-z\s]+?)(?:\?|$|\.|,)/i,
     /(?:is it|will it) (?:rain|snow|sunny|cloudy) (?:in |at )?([a-z\s]+?)(?:\?|$|\.|,)/i,
+    // New patterns for simple queries
+    /^weather (?:in |at |for )?([a-z\s]+)$/i,
+    /^temperature (?:in |at |for )?([a-z\s]+)$/i,
+    /^([a-z\s]+) weather$/i,
   ];
   
   for (const pattern of cityPatterns) {
+    console.log('🔍 [DETECT] Testing pattern:', pattern);
     const match = text.match(pattern);
+    console.log('🔍 [DETECT] Pattern match result:', match);
     if (match && match[1]) {
       const city = match[1].trim();
+      console.log('🔍 [DETECT] Extracted city:', city);
       // Filter out common words that aren't cities
       if (city.length > 2 && !['the', 'there', 'today', 'now', 'like'].includes(city)) {
+        console.log('✅ [DETECT] Valid city detected:', city);
         return city;
       }
     }
   }
   
+  console.log('❌ [DETECT] No city detected');
   return null;
 }
 
