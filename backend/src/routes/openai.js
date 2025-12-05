@@ -74,10 +74,10 @@ const MODEL_MAP = {
   "Claude 4 Opus": { provider: "anthropic", model: "claude-opus-4-5-20251101", isPremium: true },
   
   // Google Models - Fully functional with Google Gemini API
-  "Gemini 1.5 Pro": { provider: "google", model: "gemini-1.5-pro", isPremium: false },
-  "Google Gemini 1.5 Pro": { provider: "google", model: "gemini-1.5-pro", isPremium: false },
-  "Gemini 2.0": { provider: "google", model: "gemini-1.5-pro", isPremium: true }, // Map to 1.5 pro until 2.0 available
-  "Google Gemini 2.0": { provider: "google", model: "gemini-1.5-pro", isPremium: true },
+  "Gemini 1.5 Pro": { provider: "google", model: "gemini-2.5-flash", isPremium: false },
+  "Google Gemini 1.5 Pro": { provider: "google", model: "gemini-2.5-flash", isPremium: false },
+  "Gemini 2.0": { provider: "google", model: "gemini-2.5-pro", isPremium: true },
+  "Google Gemini 2.0": { provider: "google", model: "gemini-2.5-pro", isPremium: true },
   
   // DeepSeek Models - Fallback to OpenAI (no official API available yet)
   "DeepSeek V3": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
