@@ -224,6 +224,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
     }
 
     setMessages([...messages, userMessage]);
+    console.log('👤 [SEND] Added user message. Total messages now:', messages.length + 1);
     setInput('');
     setSearchQuery('');
   setSelectedImage(null);
@@ -335,7 +336,10 @@ export default function Chat({ setView, isDark, toggleDark }) {
         }
         // Insert a placeholder assistant message we will stream-update
         const placeholder = { role: 'assistant', content: '', model: modelLabel, type: 'text' };
-        setMessages(prev => [...prev, placeholder]);
+        setMessages(prev => {
+          console.log('🤖 [SEND] Adding placeholder. Previous messages:', prev.length);
+          return [...prev, placeholder];
+        });
 
         // Start streaming
         const contentWithImage = selectedImagePreview ? `${userMessage.content}\n\n![Uploaded Image](${selectedImagePreview})` : userMessage.content;
@@ -537,7 +541,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
 
   // Load messages when active conversation changes
   useEffect(() => {
-    if (!activeConversation) return;
+    if (!activeConversation || isTyping) return; // Don't reload if we're currently sending a message
     const token = localStorage.getItem('token');
     if (!token) return;
       axios.get(getApiUrl(`/conversations/${activeConversation}`), {
