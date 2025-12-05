@@ -3,6 +3,8 @@
 
 import express from "express";
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
@@ -16,28 +18,6 @@ import { appConfig } from "../services/configService.js";
 import { authRequired, premiumRequired } from "../middleware/auth.js";
 
 dotenv.config();
-
-// Optional provider imports - gracefully handle missing packages
-let Anthropic = null;
-let GoogleGenerativeAI = null;
-
-// Try to import Anthropic SDK
-try {
-  const anthropicModule = await import("@anthropic-ai/sdk");
-  Anthropic = anthropicModule.default;
-  console.log("✅ Anthropic SDK loaded");
-} catch (e) {
-  console.warn("⚠️  Anthropic SDK not installed - Claude models will use OpenAI fallback");
-}
-
-// Try to import Google Generative AI
-try {
-  const googleModule = await import("@google/generative-ai");
-  GoogleGenerativeAI = googleModule.GoogleGenerativeAI;
-  console.log("✅ Google Generative AI SDK loaded");
-} catch (e) {
-  console.warn("⚠️  Google Generative AI SDK not installed - Gemini models will use OpenAI fallback");
-}
 
 // --------------------------------------------------
 // ESM __dirname
@@ -63,24 +43,16 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // --------------------------------------------------
 // Anthropic
 // --------------------------------------------------
-const anthropic = (Anthropic && process.env.ANTHROPIC_API_KEY)
+const anthropic = (process.env.ANTHROPIC_API_KEY && Anthropic)
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null;
-
-if (anthropic) {
-  console.log("✅ Anthropic client initialized");
-}
 
 // --------------------------------------------------
 // Google Gemini
 // --------------------------------------------------
-const gemini = (GoogleGenerativeAI && process.env.GEMINI_API_KEY)
+const gemini = (process.env.GEMINI_API_KEY && GoogleGenerativeAI)
   ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
-
-if (gemini) {
-  console.log("✅ Google Gemini client initialized");
-}
 
 // --------------------------------------------------
 // Model Mapping
@@ -369,7 +341,11 @@ router.post("/chat", authRequired, async (req, res) => {
     let assistant = "";
 
     // Route to appropriate provider
-    if (modelConfig.provider === "anthropic" && anthropic) {
+    if (modelConfig.provider === "anthropic") {
+      if (!anthropic) {
+        return res.status(500).json({ error: "Anthropic API not configured." });
+      }
+
       const response = await anthropic.messages.create({
         model: modelConfig.model,
         max_tokens: 4096,
@@ -378,13 +354,17 @@ router.post("/chat", authRequired, async (req, res) => {
 
       assistant = response.content[0]?.text || "";
 
-    } else if (modelConfig.provider === "google" && gemini) {
+    } else if (modelConfig.provider === "google") {
+      if (!gemini) {
+        return res.status(500).json({ error: "Google Gemini API not configured." });
+      }
+
       const model = gemini.getGenerativeModel({ model: modelConfig.model });
       const result = await model.generateContent(message);
       assistant = result.response.text() || "";
 
     } else {
-      // OpenAI (default fallback)
+      // OpenAI (default)
       const response = await openai.chat.completions.create({
         model: modelConfig.model,
         messages: [{ role: "user", content: message }],
@@ -498,7 +478,15 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     let full = "";
 
     // Route to appropriate provider
-    if (modelConfig.provider === "anthropic" && anthropic) {
+    if (modelConfig.provider === "anthropic") {
+      if (!anthropic) {
+        res.write(
+          JSON.stringify({ type: "error", error: "Anthropic API not configured." }) + "\n"
+        );
+        res.end();
+        return;
+      }
+
       const stream = await anthropic.messages.stream({
         model: modelConfig.model,
         max_tokens: 4096,
@@ -513,7 +501,15 @@ router.post("/chat/stream", authRequired, async (req, res) => {
         }
       }
 
-    } else if (modelConfig.provider === "google" && gemini) {
+    } else if (modelConfig.provider === "google") {
+      if (!gemini) {
+        res.write(
+          JSON.stringify({ type: "error", error: "Google Gemini API not configured." }) + "\n"
+        );
+        res.end();
+        return;
+      }
+
       const model = gemini.getGenerativeModel({ model: modelConfig.model });
       const result = await model.generateContentStream(message);
 
@@ -526,7 +522,7 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       }
 
     } else {
-      // OpenAI (default fallback)
+      // OpenAI (default)
       const stream = await openai.chat.completions.create({
         model: modelConfig.model,
         messages: [{ role: "user", content: message }],
