@@ -540,7 +540,12 @@ export default function Chat({ setView, isDark, toggleDark }) {
   useEffect(() => {
     let mounted = true;
     axios.get(getApiUrl('/bots'))
-      .then(r => { if (mounted) setBots(r.data); })
+      .then(r => { 
+        if (mounted) {
+          console.log('✅ Loaded bots:', r.data);
+          setBots(r.data);
+        }
+      })
       .catch((err) => {
         console.error('Error fetching bots:', err);
         setBots([]);

@@ -5,6 +5,7 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
   const cfg = await readConfig();
+  console.log('📋 [BOTS] Returning', cfg.bots?.length || 0, 'bots:', cfg.bots?.map(b => b.name) || []);
   res.json(cfg.bots);
 });
 
