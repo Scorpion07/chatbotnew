@@ -53,10 +53,9 @@ export default function Signup({ onSignup, setView }) {
       localStorage.setItem("token", res.data.token);
 
       setSuccess(true);
-      onSignup?.(res.data.user);
-
-      console.log('✅ [GOOGLE SIGNUP] Redirecting to chat...');
-      setTimeout(() => setView?.("chat"), 600);
+      
+      console.log('✅ [GOOGLE SIGNUP] Calling onSignup callback...');
+      setTimeout(() => onSignup?.(res.data.user), 600);
     } catch (err) {
       console.error('❌ [GOOGLE SIGNUP] Error:', err.response?.data || err.message);
       setError(err.response?.data?.error || "Google sign-in failed");
@@ -100,9 +99,9 @@ export default function Signup({ onSignup, setView }) {
       localStorage.setItem("token", loginRes.data.token);
 
       setSuccess(true);
-      onSignup?.(loginRes.data.user);
-
-      setTimeout(() => setView?.("chat"), 800);
+      
+      // Call onSignup callback which will reload user and navigate
+      setTimeout(() => onSignup?.(loginRes.data.user), 800);
     } catch (err) {
       setError(err.response?.data?.error || "Signup failed");
     } finally {

@@ -312,7 +312,7 @@ export default function App() {
       {view === 'settings' && <Settings user={user} onLogout={handleLogout} onUpgrade={() => setView('payment')} />}
       {view === 'payment' && <Payment onComplete={() => { loadUser(); setView('chat'); }} />}
       {view === 'login' && <Login onLogin={() => { loadUser(); setView('chat'); }} setView={setView} />}
-      {view === 'signup' && <Signup onSignup={() => setView('login')} setView={setView} />}
+      {view === 'signup' && <Signup onSignup={() => { loadUser(); setView('chat'); }} setView={setView} />}
       {view === 'admin' && <Admin />}
     </div>
   );
