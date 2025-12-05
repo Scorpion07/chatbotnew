@@ -44,26 +44,35 @@ export default function Chat({ setView, isDark, toggleDark }) {
   const [queryCount, setQueryCount] = useState({});
   const FREE_USER_LIMIT = 5;
   
+  // Check authentication on mount
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      axios.get(getApiUrl('/auth/me'), {
-        headers: { Authorization: `Bearer ${token}` },
-        validateStatus: (status) => status < 500 // Don't throw on 4xx errors
-      }).then(res => {
-        if (res.status === 200) {
-          setIsPremium(!!res.data?.user?.isPremium);
-        } else if (res.status === 401) {
-          // Token expired/invalid - clear it silently
-          localStorage.removeItem('token');
-        }
-      }).catch(() => {
-        // Network error or 5xx - just ignore
-      });
+    if (!token) {
+      // No token - redirect to login
+      setView?.('login');
+      return;
     }
+    
+    // Verify token is valid
+    axios.get(getApiUrl('/auth/me'), {
+      headers: { Authorization: `Bearer ${token}` },
+      validateStatus: (status) => status < 500
+    }).then(res => {
+      if (res.status === 200) {
+        setIsPremium(!!res.data?.user?.isPremium);
+      } else if (res.status === 401) {
+        // Token expired/invalid - clear and redirect to login
+        localStorage.removeItem('token');
+        setView?.('login');
+      }
+    }).catch(() => {
+      // Network error - redirect to login to be safe
+      setView?.('login');
+    });
+    
     // Clear any stale local counts (we now rely on server usage)
     try { localStorage.removeItem('queryCount'); } catch {}
-  }, []);
+  }, [setView]);
 
   // Load per-bot usage counts for the authenticated user
   useEffect(() => {
