@@ -67,9 +67,9 @@ const MODEL_MAP = {
   "GPT-4.1 Mini": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
   
   // Anthropic Models - Fully functional with Anthropic API
-  "Claude 3.5 Sonnet": { provider: "anthropic", model: "claude-3-5-sonnet-20241022", isPremium: false },
-  "Claude 4.5": { provider: "anthropic", model: "claude-sonnet-4-20250514", isPremium: true },
-  "Claude 4 Opus": { provider: "anthropic", model: "claude-sonnet-4-20250514", isPremium: true },
+  "Claude 3.5 Sonnet": { provider: "anthropic", model: "claude-3-5-sonnet-20240620", isPremium: false },
+  "Claude 4.5": { provider: "anthropic", model: "claude-3-5-sonnet-20240620", isPremium: true },
+  "Claude 4 Opus": { provider: "anthropic", model: "claude-3-5-sonnet-20240620", isPremium: true },
   
   // Google Models - Fully functional with Google Gemini API
   "Gemini 1.5 Pro": { provider: "google", model: "gemini-1.5-pro", isPremium: false },
