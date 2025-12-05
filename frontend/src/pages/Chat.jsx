@@ -48,12 +48,17 @@ export default function Chat({ setView, isDark, toggleDark }) {
     const token = localStorage.getItem('token');
     if (token) {
       axios.get(getApiUrl('/auth/me'), {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => setIsPremium(!!res.data?.user?.isPremium)).catch((err) => {
-        // If token is invalid/expired, clear it
-        if (err?.response?.status === 401) {
+        headers: { Authorization: `Bearer ${token}` },
+        validateStatus: (status) => status < 500 // Don't throw on 4xx errors
+      }).then(res => {
+        if (res.status === 200) {
+          setIsPremium(!!res.data?.user?.isPremium);
+        } else if (res.status === 401) {
+          // Token expired/invalid - clear it silently
           localStorage.removeItem('token');
         }
+      }).catch(() => {
+        // Network error or 5xx - just ignore
       });
     }
     // Clear any stale local counts (we now rely on server usage)
