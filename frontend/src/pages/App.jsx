@@ -305,7 +305,7 @@ export default function App() {
       {view === 'home' && <Home setView={setView} />}
       {view === 'pricing' && <Pricing setView={setView} />}
       {view === 'chat' && (
-        <ProtectedRoute>
+        <ProtectedRoute setView={setView}>
           <Chat setView={setView} isDark={isDark} toggleDark={toggleDark} />
         </ProtectedRoute>
       )}
