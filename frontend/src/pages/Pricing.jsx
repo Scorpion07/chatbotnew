@@ -1,8 +1,53 @@
 
 import React, { useState } from 'react';
+import axios from 'axios';
+import { getApiUrl } from '../config.js';
 
 export default function Pricing({ setView }) {
   const [billingCycle, setBillingCycle] = useState('monthly');
+  const [showContactSales, setShowContactSales] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+
+  const handleUpgrade = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setView('login');
+      return;
+    }
+
+    setUpgrading(true);
+    try {
+      const res = await axios.post(
+        getApiUrl('/auth/upgrade-premium'),
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (res.data.success) {
+        // Update token in localStorage
+        if (res.data.token) {
+          localStorage.setItem('token', res.data.token);
+        }
+        // Navigate to payment page to add card
+        setView('payment');
+      }
+    } catch (err) {
+      console.error('Upgrade failed:', err);
+      alert('Failed to upgrade. Please try again.');
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
+  const handleCTA = (plan) => {
+    if (plan.name === 'Pro') {
+      handleUpgrade();
+    } else if (plan.cta === 'Contact Sales') {
+      setShowContactSales(true);
+    } else {
+      setView('chat');
+    }
+  };
 
   const plans = [
     {
@@ -181,14 +226,15 @@ export default function Pricing({ setView }) {
 
                 {/* CTA Button */}
                 <button
-                  onClick={() => setView('chat')}
+                  onClick={() => handleCTA(plan)}
+                  disabled={upgrading && plan.name === 'Pro'}
                   className={`w-full py-3 rounded-xl font-semibold mb-6 transition-all ${
                     plan.popular
                       ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                       : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-                  }`}
+                  } ${upgrading && plan.name === 'Pro' ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {plan.cta}
+                  {upgrading && plan.name === 'Pro' ? 'Upgrading...' : plan.cta}
                 </button>
 
                 {/* Features List */}
@@ -309,17 +355,79 @@ export default function Pricing({ setView }) {
           </p>
           <div className='flex flex-col sm:flex-row gap-4 justify-center'>
             <button
-              onClick={() => setView('chat')}
-              className='px-8 py-4 bg-white text-indigo-600 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 shadow-xl'
+              onClick={handleUpgrade}
+              disabled={upgrading}
+              className={`px-8 py-4 bg-white text-indigo-600 rounded-xl font-semibold hover:bg-gray-100 transition-all transform hover:scale-105 shadow-xl ${upgrading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              Start Free Trial
+              {upgrading ? 'Upgrading...' : 'Start Free Trial'}
             </button>
-            <button className='px-8 py-4 bg-indigo-700 text-white rounded-xl font-semibold hover:bg-indigo-800 transition-all border-2 border-indigo-400'>
+            <button 
+              onClick={() => setShowContactSales(true)}
+              className='px-8 py-4 bg-indigo-700 text-white rounded-xl font-semibold hover:bg-indigo-800 transition-all border-2 border-indigo-400'
+            >
               Contact Sales
             </button>
           </div>
         </div>
       </div>
+
+      {/* Contact Sales Popup */}
+      {showContactSales && (
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4'>
+          <div className='bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-gray-200 animate-fade-in'>
+            <div className='text-center mb-6'>
+              <div className='w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4'>
+                <svg className='w-8 h-8 text-white' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' />
+                </svg>
+              </div>
+              <h3 className='text-2xl font-bold text-gray-900 mb-2'>Contact Our Sales Team</h3>
+              <p className='text-gray-600'>Get in touch with us for Team or Enterprise plans</p>
+            </div>
+            
+            <div className='space-y-4 mb-6'>
+              <div className='flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                <div className='w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0'>
+                  <svg className='w-5 h-5 text-indigo-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' />
+                  </svg>
+                </div>
+                <div>
+                  <div className='text-xs text-gray-500 font-medium'>Email</div>
+                  <a href='mailto:sales@talksphere.com' className='text-indigo-600 font-semibold hover:underline'>
+                    sales@talksphere.com
+                  </a>
+                </div>
+              </div>
+              
+              <div className='flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                <div className='w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0'>
+                  <svg className='w-5 h-5 text-indigo-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z' />
+                  </svg>
+                </div>
+                <div>
+                  <div className='text-xs text-gray-500 font-medium'>Phone</div>
+                  <a href='tel:+1-800-TALK-AI' className='text-indigo-600 font-semibold hover:underline'>
+                    +1 (800) TALK-AI
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <div className='text-sm text-gray-500 mb-6 text-center'>
+              Our sales team is available Monday-Friday, 9AM-6PM EST
+            </div>
+            
+            <button
+              onClick={() => setShowContactSales(false)}
+              className='w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all'
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

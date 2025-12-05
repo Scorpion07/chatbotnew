@@ -127,4 +127,28 @@ router.get("/me", authRequired, async (req, res) => {
   }
 });
 
+// Upgrade to premium
+router.post("/upgrade-premium", authRequired, async (req, res) => {
+  try {
+    const user = req.user;
+    
+    // Update user to premium
+    user.isPremium = true;
+    await user.save();
+    
+    // Generate new token with updated isPremium status
+    const token = generateToken(user);
+    
+    return res.json({ 
+      success: true, 
+      message: "Successfully upgraded to premium",
+      user: sanitizeUser(user),
+      token // Return new token with updated isPremium claim
+    });
+  } catch (err) {
+    console.error("Upgrade error:", err);
+    return res.status(500).json({ message: "Failed to upgrade account" });
+  }
+});
+
 export default router;
