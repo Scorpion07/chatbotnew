@@ -8,7 +8,6 @@
       "status": "online",
       "description": "OpenAI's most advanced model, delivering exceptional performance in text, reasoning, and coding tasks.",
       "tagline": "The latest and greatest from OpenAI",
-      "icon": "🧠",
       "color": "bg-gradient-to-br from-green-500 to-emerald-600",
       "isNew": false,
       "isPremium": false
@@ -21,7 +20,6 @@
       "status": "online",
       "description": "Lightweight Omni model optimized for low-latency responses.",
       "tagline": "Low-latency omni",
-      "icon": "🌿",
       "color": "bg-gradient-to-br from-teal-500 to-cyan-600",
       "isNew": false,
       "isPremium": false
@@ -34,7 +32,6 @@
       "status": "online",
       "description": "Anthropic's Claude 3.5 Sonnet is excellent for complex tasks like coding and handling long conversations with deep context.",
       "tagline": "Anthropic's latest AI model",
-      "icon": "🌟",
       "color": "bg-gradient-to-br from-orange-500 to-red-600",
       "isNew": false,
       "isPremium": false
@@ -47,7 +44,6 @@
       "status": "online",
       "description": "Anthropic's next-generation model with enhanced reasoning, deeper understanding, and superior performance on complex tasks.",
       "tagline": "Next-gen Claude with advanced capabilities",
-      "icon": "🔮",
       "color": "bg-gradient-to-br from-purple-600 to-pink-600",
       "isNew": true,
       "isPremium": true
@@ -60,7 +56,6 @@
       "status": "online",
       "description": "Gemini, Google's most advanced AI, is designed for a wide range of tasks, including handling text, code, and math problems.",
       "tagline": "Google's most capable AI",
-      "icon": "✨",
       "color": "bg-gradient-to-br from-blue-500 to-sky-600",
       "isNew": false,
       "isPremium": false
@@ -73,7 +68,6 @@
       "status": "online",
       "description": "Google's breakthrough AI model with multimodal understanding, advanced reasoning, and real-time processing capabilities.",
       "tagline": "Google's next-gen multimodal AI",
-      "icon": "💎",
       "color": "bg-gradient-to-br from-blue-600 to-indigo-700",
       "isNew": true,
       "isPremium": true
@@ -86,7 +80,6 @@
       "status": "online",
       "description": "DeepSeek V3, the latest innovation in AI technology, excels at advanced reasoning, precise data analysis, and complex problem-solving.",
       "tagline": "Great for most questions",
-      "icon": "🐳",
       "color": "bg-gradient-to-br from-cyan-500 to-blue-600",
       "isNew": false,
       "isPremium": false
@@ -99,7 +92,6 @@
       "status": "online",
       "description": "DeepSeek V3, the latest innovation in AI technology, excels at advanced reasoning, precise data analysis, and coding challenges.",
       "tagline": "Great for code analysis",
-      "icon": "🐋",
       "color": "bg-gradient-to-br from-teal-500 to-cyan-600",
       "isNew": false,
       "isPremium": false
@@ -112,7 +104,6 @@
       "status": "online",
       "description": "Grok-3 Mini is built for speed and responsiveness. It delivers quick, accurate responses with a witty tone and personality.",
       "tagline": "X's fast and lightweight model",
-      "icon": "⚡",
       "color": "bg-gradient-to-br from-gray-700 to-gray-900",
       "isNew": false,
       "isPremium": false
@@ -125,7 +116,6 @@
       "status": "online",
       "description": "Grok 4 by xAI excels in tackling intricate challenges, from advanced coding to deep, context-rich conversations.",
       "tagline": "xAI's Next-Generation AI Model",
-      "icon": "🤖",
       "color": "bg-gradient-to-br from-gray-600 to-gray-800",
       "isNew": false,
       "isPremium": false
@@ -138,7 +128,6 @@
       "status": "online",
       "description": "OpenAI's revolutionary GPT-5.1 with unprecedented reasoning, multi-step planning, and near-human level understanding across all domains.",
       "tagline": "OpenAI's most powerful model yet",
-      "icon": "🚀",
       "color": "bg-gradient-to-br from-violet-600 to-purple-700",
       "isNew": true,
       "isPremium": true
@@ -151,7 +140,6 @@
       "status": "online",
       "description": "Optimized version of GPT-5 with blazing-fast response times while maintaining exceptional quality and reasoning.",
       "tagline": "GPT-5 speed meets power",
-      "icon": "⚡",
       "color": "bg-gradient-to-br from-indigo-600 to-blue-700",
       "isNew": true,
       "isPremium": true
@@ -164,7 +152,6 @@
       "status": "online",
       "description": "Anthropic's most capable model with extraordinary intelligence, nuanced reasoning, and deep contextual understanding.",
       "tagline": "Anthropic's flagship intelligence",
-      "icon": "🎭",
       "color": "bg-gradient-to-br from-rose-600 to-pink-700",
       "isNew": true,
       "isPremium": true
@@ -177,7 +164,6 @@
       "status": "online",
       "description": "Bring your ideas to life—create stunning images from just a few words! Perfect for digital art and design.",
       "tagline": "Create images using words",
-      "icon": "🎨",
       "color": "bg-gradient-to-br from-pink-500 to-rose-600",
       "isNew": false,
       "isPremium": true
@@ -190,7 +176,6 @@
       "status": "online",
       "description": "Generate and transcribe audio using OpenAI's audio API. Supports speech-to-text and text-to-speech for multimedia chat.",
       "tagline": "Create and transcribe audio",
-      "icon": "🔊",
       "color": "bg-gradient-to-br from-yellow-500 to-orange-600",
       "isNew": false,
       "isPremium": true
@@ -203,7 +188,6 @@
       "status": "online",
       "description": "OpenAI's flagship general-purpose model for strong reasoning, coding, and complex tasks.",
       "tagline": "Flagship GPT model",
-      "icon": "🤖",
       "color": "bg-gradient-to-br from-emerald-600 to-green-600",
       "isNew": false,
       "isPremium": false
@@ -216,7 +200,6 @@
       "status": "online",
       "description": "Smaller, faster GPT ideal for chat and lightweight tasks with great cost efficiency.",
       "tagline": "Fast & efficient",
-      "icon": "⚡",
       "color": "bg-gradient-to-br from-green-500 to-emerald-500",
       "isNew": false,
       "isPremium": false
