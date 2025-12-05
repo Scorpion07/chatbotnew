@@ -428,6 +428,17 @@ router.post("/chat", authRequired, async (req, res) => {
     const enhancedMessage = weatherContext ? message + weatherContext : message;
     console.log('🔍 [WEATHER DEBUG CHAT] Enhanced message length:', enhancedMessage.length);
 
+    // System prompt for better formatting
+    const systemPrompt = `You are a helpful AI assistant. Format your responses using markdown for better readability:
+- Use **bold** for emphasis
+- Use bullet points and numbered lists
+- Use emojis when appropriate to make responses engaging
+- Use headers (##) to organize long responses into sections
+- Use code blocks with language tags for code
+- Use tables when presenting structured data
+
+Be concise, friendly, and helpful.`;
+
     // Get model configuration
     const modelConfig = getModelConfig(botName);
     
@@ -447,6 +458,7 @@ router.post("/chat", authRequired, async (req, res) => {
       const response = await anthropic.messages.create({
         model: modelConfig.model,
         max_tokens: 4096,
+        system: systemPrompt,
         messages: [{ role: "user", content: enhancedMessage }],
       });
 
@@ -468,7 +480,10 @@ router.post("/chat", authRequired, async (req, res) => {
 
       const response = await deepseek.chat.completions.create({
         model: modelConfig.model,
-        messages: [{ role: "user", content: enhancedMessage }],
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: enhancedMessage }
+        ],
       });
 
       assistant = response.choices?.[0]?.message?.content || "";
@@ -477,7 +492,10 @@ router.post("/chat", authRequired, async (req, res) => {
       // OpenAI (default)
       const response = await openai.chat.completions.create({
         model: modelConfig.model,
-        messages: [{ role: "user", content: message }],
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: enhancedMessage }
+        ],
       });
 
       assistant = response.choices?.[0]?.message?.content || "";
@@ -599,6 +617,17 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     const enhancedMessage = weatherContext ? message + weatherContext : message;
     console.log('🔍 [WEATHER DEBUG STREAM] Enhanced message length:', enhancedMessage.length);
 
+    // System prompt for better formatting
+    const systemPrompt = `You are a helpful AI assistant. Format your responses using markdown for better readability:
+- Use **bold** for emphasis
+- Use bullet points and numbered lists
+- Use emojis when appropriate to make responses engaging
+- Use headers (##) to organize long responses into sections
+- Use code blocks with language tags for code
+- Use tables when presenting structured data
+
+Be concise, friendly, and helpful.`;
+
     // Get model configuration
     const modelConfig = getModelConfig(botName);
     
@@ -628,6 +657,7 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       const stream = await anthropic.messages.stream({
         model: modelConfig.model,
         max_tokens: 4096,
+        system: systemPrompt,
         messages: [{ role: "user", content: enhancedMessage }],
       });
 
@@ -693,7 +723,10 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       // OpenAI (default)
       const stream = await openai.chat.completions.create({
         model: modelConfig.model,
-        messages: [{ role: "user", content: enhancedMessage }],
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: enhancedMessage }
+        ],
         stream: true,
       });
 
