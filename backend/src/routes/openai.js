@@ -67,6 +67,9 @@ const deepseek = process.env.DEEPSEEK_API_KEY
   : null;
 
 console.log("🔵 DeepSeek API configured:", !!deepseek);
+if (!deepseek) {
+  console.warn("⚠️ DEEPSEEK_API_KEY not found in environment variables");
+}
 
 // --------------------------------------------------
 // Model Mapping
