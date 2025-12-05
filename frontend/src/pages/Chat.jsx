@@ -388,9 +388,11 @@ export default function Chat({ setView, isDark, toggleDark }) {
                     for (let i = updated.length - 1; i >= 0; i--) {
                       if (updated[i].role === 'assistant' && updated[i].type === 'text') {
                         updated[i] = { ...updated[i], content: (updated[i].content || '') + evt.text };
+                        console.log('📝 [STREAM] Updated message content:', updated[i].content.substring(0, 100));
                         break;
                       }
                     }
+                    console.log('📋 [STREAM] Total messages:', updated.length);
                     return updated;
                   });
                 } else if (evt.type === 'done') {
@@ -901,7 +903,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
         {/* Messages */}
         <div className='flex-1 overflow-y-auto px-2 sm:px-6 py-4 sm:py-8 space-y-8 custom-scrollbar'>
           {messages.map((message, index) => (
-            <div key={index} className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'} animate-fade-in`}>
+            <div key={`${index}-${message.content?.length || 0}`} className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'} animate-fade-in`}>
               {message.role === 'assistant' && (
                 <div className='flex items-center justify-center flex-shrink-0' style={{ width: 40, height: 40 }}>
                   {selectedModelData?.icon}
