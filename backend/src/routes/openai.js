@@ -57,6 +57,18 @@ const gemini = (process.env.GOOGLE_API_KEY && GoogleGenerativeAI)
 console.log("🔵 Google Gemini API configured:", !!gemini);
 
 // --------------------------------------------------
+// DeepSeek (OpenAI-compatible API)
+// --------------------------------------------------
+const deepseek = process.env.DEEPSEEK_API_KEY
+  ? new OpenAI({
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      baseURL: "https://api.deepseek.com"
+    })
+  : null;
+
+console.log("🔵 DeepSeek API configured:", !!deepseek);
+
+// --------------------------------------------------
 // Model Mapping
 // --------------------------------------------------
 const MODEL_MAP = {
@@ -79,9 +91,9 @@ const MODEL_MAP = {
   "Gemini 2.0": { provider: "google", model: "gemini-2.5-pro", isPremium: true },
   "Google Gemini 2.0": { provider: "google", model: "gemini-2.5-pro", isPremium: true },
   
-  // DeepSeek Models - Fallback to OpenAI (no official API available yet)
-  "DeepSeek V3": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
-  "DeepSeek RT": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
+  // DeepSeek Models - Fully functional with DeepSeek API
+  "DeepSeek V3": { provider: "deepseek", model: "deepseek-chat", isPremium: false },
+  "DeepSeek RT": { provider: "deepseek", model: "deepseek-reasoner", isPremium: false },
   
   // Grok Models - Fallback to OpenAI (X API not publicly available yet)
   "Grok-3 Mini": { provider: "openai", model: "gpt-4o-mini", isPremium: false },
@@ -367,6 +379,18 @@ router.post("/chat", authRequired, async (req, res) => {
       const result = await model.generateContent(message);
       assistant = result.response.text() || "";
 
+    } else if (modelConfig.provider === "deepseek") {
+      if (!deepseek) {
+        return res.status(500).json({ error: "DeepSeek API not configured." });
+      }
+
+      const response = await deepseek.chat.completions.create({
+        model: modelConfig.model,
+        messages: [{ role: "user", content: message }],
+      });
+
+      assistant = response.choices?.[0]?.message?.content || "";
+
     } else {
       // OpenAI (default)
       const response = await openai.chat.completions.create({
@@ -528,6 +552,29 @@ router.post("/chat/stream", authRequired, async (req, res) => {
 
       for await (const chunk of result.stream) {
         const delta = chunk.text();
+        if (delta) {
+          full += delta;
+          res.write(JSON.stringify({ type: "delta", text: delta }) + "\n");
+        }
+      }
+
+    } else if (modelConfig.provider === "deepseek") {
+      if (!deepseek) {
+        res.write(
+          JSON.stringify({ type: "error", error: "DeepSeek API not configured." }) + "\n"
+        );
+        res.end();
+        return;
+      }
+
+      const stream = await deepseek.chat.completions.create({
+        model: modelConfig.model,
+        messages: [{ role: "user", content: message }],
+        stream: true,
+      });
+
+      for await (const part of stream) {
+        const delta = part?.choices?.[0]?.delta?.content || "";
         if (delta) {
           full += delta;
           res.write(JSON.stringify({ type: "delta", text: delta }) + "\n");
