@@ -498,10 +498,10 @@ export default function Chat({ setView, isDark, toggleDark }) {
     { name: 'Gemini', icon: <img src={botSquareIcon} alt="Bot" style={{ width: 24, height: 24, borderRadius: 6 }} />, color: 'from-blue-500 to-indigo-600', description: 'Google\'s latest' },
     { name: 'Llama', icon: <img src={botSquareIcon} alt="Bot" style={{ width: 24, height: 24, borderRadius: 6 }} />, color: 'from-purple-500 to-pink-600', description: 'Open source' }
   ];
-  // Prefer bot-provided icon/color; fallback to defaults map above
+  // Prefer bot-provided color; fallback to defaults map above
   const extractedGradient = selectedBot?.color ? (selectedBot.color.match(/from-[^\s]+\s+to-[^\s]+/)?.[0] || '') : '';
   const selectedModelData = selectedBot
-    ? { icon: selectedBot.icon || '🤖', color: extractedGradient || 'from-indigo-500 to-purple-600' }
+    ? { color: extractedGradient || 'from-indigo-500 to-purple-600' }
     : models.find(m => m.name === selectedModel);
 
   const scrollToBottom = () => {
@@ -848,7 +848,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
                     onMouseEnter={() => setHoveredBot(bot)}
                     onMouseLeave={() => setHoveredBot(null)}
                   >
-                    {bot.icon} {bot.model || bot.name}
+                    {bot.model || bot.name}
                   </option>
                 ))}
               </select>
@@ -871,7 +871,6 @@ export default function Chat({ setView, isDark, toggleDark }) {
                   onMouseLeave={() => setHoveredBot(null)}
                 >
                   <div className='flex items-center gap-2 mb-2'>
-                    <span className='text-xl'>{hoveredBot.icon}</span>
                     <span className='font-semibold text-gray-900 dark:text-gray-100'>{hoveredBot.model || hoveredBot.name}</span>
                   </div>
                   <div className='text-sm text-gray-700 dark:text-gray-300 mb-1'>{hoveredBot.tagline}</div>
@@ -927,11 +926,6 @@ export default function Chat({ setView, isDark, toggleDark }) {
         <div className='flex-1 overflow-y-auto px-2 sm:px-6 py-4 sm:py-8 space-y-8 custom-scrollbar'>
           {messages.map((message, index) => (
             <div key={`${index}-${message.content?.length || 0}`} className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'} animate-fade-in`}>
-              {message.role === 'assistant' && (
-                <div className='flex items-center justify-center flex-shrink-0' style={{ width: 40, height: 40 }}>
-                  {selectedModelData?.icon}
-                </div>
-              )}
               <div className={`w-full max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
                 <div className={`px-6 py-4 rounded-2xl text-base leading-relaxed ${
                   message.role === 'user'
