@@ -4,7 +4,9 @@ import bcrypt from "bcryptjs";
 //
 // ------------------------- DATABASE SETUP -------------------------
 //
-export const sequelize = new Sequelize("sqlite:./data/database.sqlite", {
+export const sequelize = new Sequelize({
+  dialect: "sqlite",
+  storage: "./data/database.sqlite",
   logging: false,
 });
 
