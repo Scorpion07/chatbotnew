@@ -391,23 +391,30 @@ router.post("/chat", authRequired, async (req, res) => {
     }
 
     // Detect and fetch weather data if query is weather-related
+    console.log('🔍 [WEATHER DEBUG CHAT] Checking message:', message);
     let weatherContext = '';
     const detectedCity = detectWeatherQuery(message);
+    console.log('🔍 [WEATHER DEBUG CHAT] Detected city:', detectedCity);
     
     if (detectedCity) {
       try {
-        console.log(`🌤️ Weather query detected for: ${detectedCity}`);
+        console.log(`🌤️ [WEATHER CHAT] Weather query detected for: ${detectedCity}`);
         const weatherData = await getCurrentWeather(detectedCity);
+        console.log('🌤️ [WEATHER CHAT] Raw data:', JSON.stringify(weatherData, null, 2));
         weatherContext = `\n\n[WEATHER DATA] ${formatWeatherForAI(weatherData)}\n\nPlease use this current weather information to answer the user's question accurately.`;
-        console.log(`✅ Weather data fetched for ${detectedCity}`);
+        console.log(`✅ [WEATHER CHAT] Context length: ${weatherContext.length}`);
       } catch (error) {
-        console.log(`⚠️ Could not fetch weather for ${detectedCity}:`, error.message);
+        console.log(`⚠️ [WEATHER CHAT ERROR] Could not fetch for ${detectedCity}:`, error.message);
+        console.log(`⚠️ [WEATHER CHAT ERROR] Stack:`, error.stack);
         // Continue without weather data
       }
+    } else {
+      console.log('ℹ️ [WEATHER CHAT] No weather query detected');
     }
 
     // Prepare the enhanced message with weather context
     const enhancedMessage = weatherContext ? message + weatherContext : message;
+    console.log('🔍 [WEATHER DEBUG CHAT] Enhanced message length:', enhancedMessage.length);
 
     // Get model configuration
     const modelConfig = getModelConfig(botName);
@@ -555,23 +562,30 @@ router.post("/chat/stream", authRequired, async (req, res) => {
     }
 
     // Detect and fetch weather data if query is weather-related
+    console.log('🔍 [WEATHER DEBUG STREAM] Checking message:', message);
     let weatherContext = '';
     const detectedCity = detectWeatherQuery(message);
+    console.log('🔍 [WEATHER DEBUG STREAM] Detected city:', detectedCity);
     
     if (detectedCity) {
       try {
-        console.log(`🌤️ Weather query detected for: ${detectedCity}`);
+        console.log(`🌤️ [WEATHER STREAM] Weather query detected for: ${detectedCity}`);
         const weatherData = await getCurrentWeather(detectedCity);
+        console.log('🌤️ [WEATHER STREAM] Raw data:', JSON.stringify(weatherData, null, 2));
         weatherContext = `\n\n[WEATHER DATA] ${formatWeatherForAI(weatherData)}\n\nPlease use this current weather information to answer the user's question accurately.`;
-        console.log(`✅ Weather data fetched for ${detectedCity}`);
+        console.log(`✅ [WEATHER STREAM] Context length: ${weatherContext.length}`);
       } catch (error) {
-        console.log(`⚠️ Could not fetch weather for ${detectedCity}:`, error.message);
+        console.log(`⚠️ [WEATHER STREAM ERROR] Could not fetch for ${detectedCity}:`, error.message);
+        console.log(`⚠️ [WEATHER STREAM ERROR] Stack:`, error.stack);
         // Continue without weather data
       }
+    } else {
+      console.log('ℹ️ [WEATHER STREAM] No weather query detected');
     }
 
     // Prepare the enhanced message with weather context
     const enhancedMessage = weatherContext ? message + weatherContext : message;
+    console.log('🔍 [WEATHER DEBUG STREAM] Enhanced message length:', enhancedMessage.length);
 
     // Get model configuration
     const modelConfig = getModelConfig(botName);
