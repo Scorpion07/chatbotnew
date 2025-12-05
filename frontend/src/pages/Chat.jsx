@@ -37,6 +37,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
   const [audioBlob, setAudioBlob] = useState(null);
   const mediaRecorderRef = useRef(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   
   // Check if user is premium
   const [isPremium, setIsPremium] = useState(false);
