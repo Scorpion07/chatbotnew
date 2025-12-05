@@ -228,6 +228,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
   setSelectedImage(null);
   setSelectedImagePreview(null);
     setIsTyping(true);
+    setIsThinking(true);
 
     try {
       let response;
@@ -332,6 +333,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
           } catch {}
         }
         // Insert a placeholder assistant message we will stream-update
+        setIsThinking(false);
         const placeholder = { role: 'assistant', content: '', model: modelLabel, type: 'text' };
         setMessages(prev => [...prev, placeholder]);
 
@@ -408,6 +410,7 @@ export default function Chat({ setView, isDark, toggleDark }) {
         setQueryCount(prev => ({ ...prev, [selectedModel]: (prev[selectedModel] || 0) + 1 }));
       }
     } catch (err) {
+      setIsThinking(false);
       // If server enforced limit, show upgrade modal
       if (err?.response?.status === 402 || err?.response?.status === 403) {
         setShowUpgrade(true);
@@ -866,19 +869,19 @@ export default function Chat({ setView, isDark, toggleDark }) {
         )}
 
         {/* Messages */}
-        <div className='flex-1 overflow-y-auto px-2 sm:px-6 py-2 sm:py-6 space-y-4 sm:space-y-6 custom-scrollbar'>
+        <div className='flex-1 overflow-y-auto px-2 sm:px-6 py-4 sm:py-8 space-y-8 custom-scrollbar'>
           {messages.map((message, index) => (
-            <div key={index} className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'}`}>
+            <div key={index} className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-center'} animate-fade-in`}>
               {message.role === 'assistant' && (
                 <div className='flex items-center justify-center flex-shrink-0' style={{ width: 40, height: 40 }}>
                   {selectedModelData?.icon}
                 </div>
               )}
               <div className={`w-full max-w-3xl ${message.role === 'user' ? 'order-first' : ''}`}>
-                <div className={`px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base ${
+                <div className={`px-6 py-4 rounded-2xl text-base leading-relaxed ${
                   message.role === 'user'
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none'
-                    : `${PT.bgLight} ${PT.bgDark} border ${PT.borderLight} ${PT.borderDark} text-gray-800 dark:text-gray-100 rounded-tl-none shadow-sm provider-${provider}`
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-none shadow-lg shadow-indigo-500/20'
+                    : `${PT.bgLight} ${PT.bgDark} border ${PT.borderLight} ${PT.borderDark} text-gray-800 dark:text-gray-100 rounded-tl-none shadow-md provider-${provider}`
                 }`}>
                   {message.type === 'image' ? (
                     <div className='space-y-2 sm:space-y-3'>
@@ -1005,7 +1008,28 @@ export default function Chat({ setView, isDark, toggleDark }) {
             </div>
           ))}
           
-          {isTyping && (
+          {/* Thinking Indicator */}
+          {isThinking && (
+            <div className='flex gap-4 justify-center animate-fade-in'>
+              <div className='flex items-center justify-center flex-shrink-0' style={{ width: 40, height: 40 }}>
+                {selectedModelData?.icon}
+              </div>
+              <div className='w-full max-w-3xl'>
+                <div className={`px-6 py-4 rounded-2xl rounded-tl-none ${PT.bgLight} ${PT.bgDark} border ${PT.borderLight} ${PT.borderDark} shadow-md`}>
+                  <div className='flex items-center gap-3'>
+                    <div className='flex gap-1.5'>
+                      <div className='w-2 h-2 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-bounce' style={{ animationDelay: '0ms' }}></div>
+                      <div className='w-2 h-2 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-bounce' style={{ animationDelay: '150ms' }}></div>
+                      <div className='w-2 h-2 bg-indigo-500 dark:bg-indigo-400 rounded-full animate-bounce' style={{ animationDelay: '300ms' }}></div>
+                    </div>
+                    <span className='text-sm text-gray-600 dark:text-gray-300 font-medium'>{modelLabel} is thinking...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {isTyping && !isThinking && (
             <div className='flex gap-4 justify-start'>
               <div className='flex items-center justify-center flex-shrink-0' style={{ width: 40, height: 40 }}>
                 {selectedModelData?.icon}
