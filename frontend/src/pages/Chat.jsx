@@ -49,7 +49,12 @@ export default function Chat({ setView, isDark, toggleDark }) {
     if (token) {
       axios.get(getApiUrl('/auth/me'), {
         headers: { Authorization: `Bearer ${token}` }
-      }).then(res => setIsPremium(!!res.data?.user?.isPremium)).catch(() => {});
+      }).then(res => setIsPremium(!!res.data?.user?.isPremium)).catch((err) => {
+        // If token is invalid/expired, clear it
+        if (err?.response?.status === 401) {
+          localStorage.removeItem('token');
+        }
+      });
     }
     // Clear any stale local counts (we now rely on server usage)
     try { localStorage.removeItem('queryCount'); } catch {}
