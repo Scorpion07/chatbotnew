@@ -16,6 +16,7 @@ import fetch from "node-fetch";
 import { User, Usage, Conversation, Message } from "../models/index.js";
 import { appConfig } from "../services/configService.js";
 import { authRequired, premiumRequired } from "../middleware/auth.js";
+import { getCurrentWeather, formatWeatherForAI } from "../services/weatherService.js";
 
 dotenv.config();
 
@@ -105,6 +106,46 @@ const MODEL_MAP = {
 
 function getModelConfig(botName) {
   return MODEL_MAP[botName] || { provider: "openai", model: "gpt-4o-mini" };
+}
+
+// --------------------------------------------------
+// Weather Detection Helper
+// --------------------------------------------------
+function detectWeatherQuery(message) {
+  const text = message.toLowerCase();
+  
+  // Weather keywords
+  const weatherKeywords = [
+    'weather', 'temperature', 'temp', 'forecast', 'climate',
+    'raining', 'rain', 'sunny', 'cloudy', 'snow', 'hot', 'cold',
+    'humidity', 'wind', 'storm'
+  ];
+  
+  // Check if message contains weather-related keywords
+  const hasWeatherKeyword = weatherKeywords.some(keyword => text.includes(keyword));
+  
+  if (!hasWeatherKeyword) return null;
+  
+  // Common city patterns
+  const cityPatterns = [
+    /weather (?:in |at |for )?([a-z\s]+?)(?:\?|$|\.|,)/i,
+    /temperature (?:in |at |of |for )?([a-z\s]+?)(?:\?|$|\.|,)/i,
+    /(?:how is|what's|whats) (?:the )?(?:weather|temperature) (?:in |at |for )?([a-z\s]+?)(?:\?|$|\.|,)/i,
+    /(?:is it|will it) (?:rain|snow|sunny|cloudy) (?:in |at )?([a-z\s]+?)(?:\?|$|\.|,)/i,
+  ];
+  
+  for (const pattern of cityPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      const city = match[1].trim();
+      // Filter out common words that aren't cities
+      if (city.length > 2 && !['the', 'there', 'today', 'now', 'like'].includes(city)) {
+        return city;
+      }
+    }
+  }
+  
+  return null;
 }
 
 // --------------------------------------------------
@@ -349,6 +390,25 @@ router.post("/chat", authRequired, async (req, res) => {
       await conv.update({ title: message.slice(0, 60) });
     }
 
+    // Detect and fetch weather data if query is weather-related
+    let weatherContext = '';
+    const detectedCity = detectWeatherQuery(message);
+    
+    if (detectedCity) {
+      try {
+        console.log(`🌤️ Weather query detected for: ${detectedCity}`);
+        const weatherData = await getCurrentWeather(detectedCity);
+        weatherContext = `\n\n[WEATHER DATA] ${formatWeatherForAI(weatherData)}\n\nPlease use this current weather information to answer the user's question accurately.`;
+        console.log(`✅ Weather data fetched for ${detectedCity}`);
+      } catch (error) {
+        console.log(`⚠️ Could not fetch weather for ${detectedCity}:`, error.message);
+        // Continue without weather data
+      }
+    }
+
+    // Prepare the enhanced message with weather context
+    const enhancedMessage = weatherContext ? message + weatherContext : message;
+
     // Get model configuration
     const modelConfig = getModelConfig(botName);
     
@@ -368,7 +428,7 @@ router.post("/chat", authRequired, async (req, res) => {
       const response = await anthropic.messages.create({
         model: modelConfig.model,
         max_tokens: 4096,
-        messages: [{ role: "user", content: message }],
+        messages: [{ role: "user", content: enhancedMessage }],
       });
 
       assistant = response.content[0]?.text || "";
@@ -379,7 +439,7 @@ router.post("/chat", authRequired, async (req, res) => {
       }
 
       const model = gemini.getGenerativeModel({ model: modelConfig.model });
-      const result = await model.generateContent(message);
+      const result = await model.generateContent(enhancedMessage);
       assistant = result.response.text() || "";
 
     } else if (modelConfig.provider === "deepseek") {
@@ -389,7 +449,7 @@ router.post("/chat", authRequired, async (req, res) => {
 
       const response = await deepseek.chat.completions.create({
         model: modelConfig.model,
-        messages: [{ role: "user", content: message }],
+        messages: [{ role: "user", content: enhancedMessage }],
       });
 
       assistant = response.choices?.[0]?.message?.content || "";
@@ -494,6 +554,25 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       await conv.update({ title: message.slice(0, 60) });
     }
 
+    // Detect and fetch weather data if query is weather-related
+    let weatherContext = '';
+    const detectedCity = detectWeatherQuery(message);
+    
+    if (detectedCity) {
+      try {
+        console.log(`🌤️ Weather query detected for: ${detectedCity}`);
+        const weatherData = await getCurrentWeather(detectedCity);
+        weatherContext = `\n\n[WEATHER DATA] ${formatWeatherForAI(weatherData)}\n\nPlease use this current weather information to answer the user's question accurately.`;
+        console.log(`✅ Weather data fetched for ${detectedCity}`);
+      } catch (error) {
+        console.log(`⚠️ Could not fetch weather for ${detectedCity}:`, error.message);
+        // Continue without weather data
+      }
+    }
+
+    // Prepare the enhanced message with weather context
+    const enhancedMessage = weatherContext ? message + weatherContext : message;
+
     // Get model configuration
     const modelConfig = getModelConfig(botName);
     
@@ -523,7 +602,7 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       const stream = await anthropic.messages.stream({
         model: modelConfig.model,
         max_tokens: 4096,
-        messages: [{ role: "user", content: message }],
+        messages: [{ role: "user", content: enhancedMessage }],
       });
 
       let chunkCount = 0;
@@ -551,7 +630,7 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       }
 
       const model = gemini.getGenerativeModel({ model: modelConfig.model });
-      const result = await model.generateContentStream(message);
+      const result = await model.generateContentStream(enhancedMessage);
 
       for await (const chunk of result.stream) {
         const delta = chunk.text();
@@ -572,7 +651,7 @@ router.post("/chat/stream", authRequired, async (req, res) => {
 
       const stream = await deepseek.chat.completions.create({
         model: modelConfig.model,
-        messages: [{ role: "user", content: message }],
+        messages: [{ role: "user", content: enhancedMessage }],
         stream: true,
       });
 
@@ -588,7 +667,7 @@ router.post("/chat/stream", authRequired, async (req, res) => {
       // OpenAI (default)
       const stream = await openai.chat.completions.create({
         model: modelConfig.model,
-        messages: [{ role: "user", content: message }],
+        messages: [{ role: "user", content: enhancedMessage }],
         stream: true,
       });
 

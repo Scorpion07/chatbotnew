@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { getApiUrl, isFeatureEnabled } from '../config.js';
+import { trackPurchase } from '../lib/analytics.js';
 
 export default function Payment({ onComplete }) {
   const [loading, setLoading] = useState(false);
@@ -183,6 +184,7 @@ export default function Payment({ onComplete }) {
       });
 
       setMessage('Credit card saved successfully! You can now proceed with payment.');
+      trackPurchase('premium', 20);
       
       // Clear form
       setCardInfo({

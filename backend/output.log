@@ -1,0 +1,8 @@
+[dotenv@17.2.3] injecting env (27) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+🔑 Vertex KEY_PATH = C:\Users\sachi\OneDrive\Desktop\chatnew\chatbotnew\backend\src\vertex-key.json
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+🗄️  Initializing database...
+🗄️  [DB] Syncing models...
+✅ [DB] Synced successfully
+✅ Server running on port 5000

@@ -5,6 +5,7 @@ import {
   getApiUrl,
   isFeatureEnabled
 } from "../config.js";
+import { trackSignup } from "../lib/analytics.js";
 
 export default function Signup({ onSignup, setView }) {
   const [email, setEmail] = useState("");
@@ -53,6 +54,7 @@ export default function Signup({ onSignup, setView }) {
       localStorage.setItem("token", res.data.token);
 
       setSuccess(true);
+      trackSignup('google');
       
       console.log('✅ [GOOGLE SIGNUP] Calling onSignup callback...');
       setTimeout(() => onSignup?.(res.data.user), 600);
@@ -99,6 +101,7 @@ export default function Signup({ onSignup, setView }) {
       localStorage.setItem("token", loginRes.data.token);
 
       setSuccess(true);
+      trackSignup('email');
       
       // Call onSignup callback which will reload user and navigate
       setTimeout(() => onSignup?.(loginRes.data.user), 800);

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { getApiUrl } from '../config.js';
+import { trackUpgrade } from '../lib/analytics.js';
 
 export default function Pricing({ setView }) {
   const [billingCycle, setBillingCycle] = useState('monthly');
@@ -28,6 +29,7 @@ export default function Pricing({ setView }) {
         if (res.data.token) {
           localStorage.setItem('token', res.data.token);
         }
+        trackUpgrade('pro');
         // Navigate to payment page to add card
         setView('payment');
       }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import config, { getApiUrl, isFeatureEnabled } from "../config.js";
+import { trackLogin } from "../lib/analytics.js";
 
 export default function Login({ onLogin, setView }) {
   const [email, setEmail] = useState("");
@@ -36,6 +37,7 @@ export default function Login({ onLogin, setView }) {
       console.log('✅ [GOOGLE LOGIN] Backend response:', res.data);
       localStorage.setItem(config.auth.tokenKey, res.data.token);
 
+      trackLogin('google');
       onLogin?.(res.data.user);
       console.log('✅ [GOOGLE LOGIN] Redirecting to chat...');
       setView?.("chat");
@@ -119,6 +121,7 @@ export default function Login({ onLogin, setView }) {
       });
 
       localStorage.setItem(config.auth.tokenKey, res.data.token);
+      trackLogin('email');
       onLogin?.(res.data.user);
       setView?.("chat");
     } catch (err) {

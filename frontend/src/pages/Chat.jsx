@@ -9,6 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import remarkEmoji from 'remark-emoji';
+import { trackChatMessage } from '../lib/analytics.js';
 import 'katex/dist/katex.min.css';
 
 export default function Chat({ setView, isDark, toggleDark }) {
@@ -244,6 +245,10 @@ export default function Chat({ setView, isDark, toggleDark }) {
 
     setMessages([...messages, userMessage]);
     console.log('👤 [SEND] Added user message. Total messages now:', messages.length + 1);
+    
+    // Track chat message in Google Analytics
+    trackChatMessage(modelLabel, isPremium);
+    
     setInput('');
     setSearchQuery('');
   setSelectedImage(null);
