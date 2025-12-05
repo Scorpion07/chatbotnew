@@ -181,11 +181,11 @@ export default function Login({ onLogin, setView }) {
         </div>
 
         {/* Google Button */}
-        {isFeatureEnabled("googleAuth") && hasValidGoogleClientId() && (
+        {isFeatureEnabled("googleAuth") && hasValidGoogleClientId() ? (
           <div className="flex justify-center mt-4">
             <div ref={googleBtnRef}></div>
           </div>
-        )}
+        ) : null}
 
         {/* Switch to Signup */}
         <div className="text-sm text-gray-600 mt-4 text-center">
