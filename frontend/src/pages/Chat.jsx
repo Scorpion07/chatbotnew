@@ -334,7 +334,6 @@ export default function Chat({ setView, isDark, toggleDark }) {
           } catch {}
         }
         // Insert a placeholder assistant message we will stream-update
-        setIsThinking(false);
         const placeholder = { role: 'assistant', content: '', model: modelLabel, type: 'text' };
         setMessages(prev => [...prev, placeholder]);
 
@@ -393,12 +392,17 @@ export default function Chat({ setView, isDark, toggleDark }) {
                     return updated;
                   });
                 } else if (evt.type === 'done') {
-                  // Optionally handle sources if provided later
+                  // Stream complete - turn off indicators
+                  setIsThinking(false);
+                  setIsTyping(false);
                 }
               } catch { /* ignore parse errors */ }
             }
           }
         }
+        // Stream complete - ensure indicators are off
+        setIsThinking(false);
+        setIsTyping(false);
         // No additional response push; placeholder has been filled progressively
         response = null;
       }
