@@ -11,6 +11,7 @@ import Login from './Login.jsx';
 import Signup from './Signup.jsx';
 import Payment from './Payment.jsx';
 import Settings from './Settings.jsx';
+import { initAnalytics, trackPageView } from '../lib/analytics.js';
 
 export default function App() {
   const [view, setView] = useState('home');
@@ -60,6 +61,13 @@ export default function App() {
 
   useEffect(() => {
     loadUser();
+  }, []);
+
+  useEffect(() => {
+    initAnalytics();
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      trackPageView(window.location.pathname, document.title || 'App');
+    }
   }, []);
 
   useEffect(() => {
